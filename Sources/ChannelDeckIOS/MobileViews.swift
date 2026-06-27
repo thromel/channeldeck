@@ -941,6 +941,7 @@ struct MobilePlayerView: View {
                     MobileCurrentChannelPanel(channel: channel) {
                         store.stopPlayback()
                     }
+                    MobileGuidePanel(store: store)
                 } else {
                     MobilePlayerPlaceholder()
                 }
@@ -949,12 +950,21 @@ struct MobilePlayerView: View {
         }
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    store.stopPlayback()
-                } label: {
-                    Label("Stop", systemImage: "stop.fill")
+                HStack {
+                    Button {
+                        store.refreshCurrentEPG()
+                    } label: {
+                        Label("Refresh Guide", systemImage: "calendar.badge.clock")
+                    }
+                    .disabled(store.currentChannel == nil || store.epgState == .loading)
+
+                    Button {
+                        store.stopPlayback()
+                    } label: {
+                        Label("Stop", systemImage: "stop.fill")
+                    }
+                    .disabled(store.currentChannel == nil)
                 }
-                .disabled(store.currentChannel == nil)
             }
         }
     }
@@ -1005,6 +1015,120 @@ struct MobilePlayerPlaceholder: View {
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.secondary.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct MobileGuidePanel: View {
+    @ObservedObject var store: MobileIPTVStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline) {
+                Label(store.epgState.title, systemImage: "calendar")
+                    .font(.headline)
+
+                Spacer(minLength: 12)
+
+                if !store.epgPrograms.isEmpty {
+                    Text("\(store.epgPrograms.count)")
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+
+                Button {
+                    store.refreshCurrentEPG()
+                } label: {
+                    Label("Refresh Guide", systemImage: "arrow.clockwise")
+                }
+                .labelStyle(.iconOnly)
+                .disabled(store.currentChannel == nil || store.epgState == .loading)
+            }
+
+            switch store.epgState {
+            case .idle:
+                MobileGuideMessage(text: "Guide data loads when playback starts.", systemImage: "calendar")
+            case .loading:
+                HStack(spacing: 10) {
+                    ProgressView()
+                        .controlSize(.small)
+                    Text("Loading provider guide")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding()
+                .background(Color.secondary.opacity(0.1))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            case .loaded:
+                LazyVStack(spacing: 10) {
+                    ForEach(Array(store.epgPrograms.prefix(6).enumerated()), id: \.element.id) { index, program in
+                        MobileGuideProgramCard(label: index == 0 ? "Now" : index == 1 ? "Next" : "Later", program: program)
+                    }
+                }
+            case .unavailable:
+                MobileGuideMessage(text: "No guide data returned for this channel.", systemImage: "calendar.badge.exclamationmark")
+            case .failed(let message):
+                MobileGuideMessage(text: message.isEmpty ? "Guide unavailable." : message, systemImage: "exclamationmark.triangle")
+            }
+        }
+        .padding()
+        .background(Color.secondary.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct MobileGuideProgramCard: View {
+    let label: String
+    let program: MobileEPGProgram
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                Text(label)
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(label == "Now" ? Color.accentColor : .secondary)
+                Text(program.timeRangeText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Text(program.title)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(2)
+
+            if !program.description.isEmpty {
+                Text(program.description)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(2)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(12)
+        .background(Color.primary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct MobileGuideMessage: View {
+    let text: String
+    let systemImage: String
+
+    var body: some View {
+        Label {
+            Text(text)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(.secondary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Color.primary.opacity(0.05))
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

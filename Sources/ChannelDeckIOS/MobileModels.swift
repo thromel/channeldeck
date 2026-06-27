@@ -256,6 +256,109 @@ struct MobileUserInfo: Decodable {
     }
 }
 
+struct MobileEPGProgram: Identifiable, Equatable, Decodable {
+    let id: String
+    let title: String
+    let description: String
+    let start: Date?
+    let end: Date?
+    let fallbackStartText: String
+    let fallbackEndText: String
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        let rawID = container.decodeLossyString(forKey: .id)
+        let rawTitle = container.decodeLossyString(forKey: .title)
+        let rawDescription = container.decodeLossyString(forKey: .description)
+        let rawStart = container.decodeLossyString(forKey: .start)
+        let rawEnd = container.decodeLossyString(forKey: .end)
+            .ifEmpty(container.decodeLossyString(forKey: .stop))
+        let startTimestamp = container.decodeOptionalLossyInt(forKey: .startTimestamp)
+        let stopTimestamp = container.decodeOptionalLossyInt(forKey: .stopTimestamp)
+            ?? container.decodeOptionalLossyInt(forKey: .endTimestamp)
+
+        title = rawTitle.decodedEPGText.ifEmpty("Untitled program")
+        description = rawDescription.decodedEPGText
+        start = Date.epgDate(timestamp: startTimestamp, fallback: rawStart)
+        end = Date.epgDate(timestamp: stopTimestamp, fallback: rawEnd)
+        fallbackStartText = rawStart
+        fallbackEndText = rawEnd
+        id = rawID.isEmpty ? "\(title)-\(rawStart)-\(rawEnd)" : rawID
+    }
+
+    var timeRangeText: String {
+        if let start, let end {
+            let formatter = DateIntervalFormatter()
+            formatter.dateStyle = .none
+            formatter.timeStyle = .short
+            return formatter.string(from: start, to: end)
+        }
+
+        if !fallbackStartText.isEmpty && !fallbackEndText.isEmpty {
+            return "\(fallbackStartText) - \(fallbackEndText)"
+        }
+
+        if !fallbackStartText.isEmpty {
+            return fallbackStartText
+        }
+
+        return "Time unavailable"
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case title
+        case description
+        case start
+        case end
+        case stop
+        case startTimestamp = "start_timestamp"
+        case endTimestamp = "end_timestamp"
+        case stopTimestamp = "stop_timestamp"
+    }
+}
+
+struct MobileEPGResponse: Decodable {
+    let programs: [MobileEPGProgram]
+
+    init(from decoder: Decoder) throws {
+        if let programs = try? [MobileEPGProgram](from: decoder) {
+            self.programs = programs
+            return
+        }
+
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        programs = (try? container.decode([MobileEPGProgram].self, forKey: .programs)) ?? []
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case programs = "epg_listings"
+    }
+}
+
+enum MobileEPGLoadState: Equatable {
+    case idle
+    case loading
+    case loaded
+    case unavailable
+    case failed(String)
+
+    var title: String {
+        switch self {
+        case .idle:
+            "Guide"
+        case .loading:
+            "Loading guide"
+        case .loaded:
+            "Guide"
+        case .unavailable:
+            "Guide unavailable"
+        case .failed:
+            "Guide failed"
+        }
+    }
+}
+
 extension KeyedDecodingContainer {
     func decodeLossyString(forKey key: Key) -> String {
         if let value = try? decode(String.self, forKey: key) {
@@ -298,7 +401,48 @@ private extension String {
         addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? self
     }
 
+    var decodedEPGText: String {
+        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count >= 4,
+              trimmed.count % 4 == 0,
+              trimmed.range(of: #"^[A-Za-z0-9+/]+={0,2}$"#, options: .regularExpression) != nil,
+              let data = Data(base64Encoded: trimmed, options: .ignoreUnknownCharacters),
+              let decoded = String(data: data, encoding: .utf8) else {
+            return trimmed
+        }
+
+        let cleaned = decoded.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleaned.isEmpty,
+              cleaned.unicodeScalars.allSatisfy({ scalar in
+                  !CharacterSet.controlCharacters.contains(scalar) || scalar == "\n" || scalar == "\t"
+              }) else {
+            return trimmed
+        }
+
+        return cleaned
+    }
+
     func ifEmpty(_ fallback: String) -> String {
         isEmpty ? fallback : self
+    }
+}
+
+private extension Date {
+    static func epgDate(timestamp: Int?, fallback: String) -> Date? {
+        if let timestamp, timestamp > 0 {
+            return Date(timeIntervalSince1970: TimeInterval(timestamp))
+        }
+
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+
+        for format in ["yyyy-MM-dd HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ssZ", "yyyy-MM-dd'T'HH:mm:ssXXXXX"] {
+            formatter.dateFormat = format
+            if let date = formatter.date(from: fallback) {
+                return date
+            }
+        }
+
+        return nil
     }
 }

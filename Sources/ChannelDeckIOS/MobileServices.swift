@@ -25,9 +25,22 @@ struct MobileIPTVService {
         try await fetch(credentials: credentials, action: "get_live_streams")
     }
 
+    func shortEPG(credentials: MobileIPTVCredentials, streamID: MobileIPTVChannel.ID, limit: Int = 6) async throws -> [MobileEPGProgram] {
+        let response: MobileEPGResponse = try await fetch(
+            credentials: credentials,
+            action: "get_short_epg",
+            queryItems: [
+                URLQueryItem(name: "stream_id", value: String(streamID)),
+                URLQueryItem(name: "limit", value: String(limit))
+            ]
+        )
+        return response.programs
+    }
+
     private func fetch<T: Decodable>(
         credentials: MobileIPTVCredentials,
-        action: String?
+        action: String?,
+        queryItems additionalQueryItems: [URLQueryItem] = []
     ) async throws -> T {
         let server = credentials.trimmedServerURL.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard var components = URLComponents(string: "\(server)/player_api.php") else {
@@ -43,6 +56,7 @@ struct MobileIPTVService {
             queryItems.append(URLQueryItem(name: "action", value: action))
         }
 
+        queryItems.append(contentsOf: additionalQueryItems)
         components.queryItems = queryItems
 
         guard let url = components.url else {

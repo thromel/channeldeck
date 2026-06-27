@@ -102,6 +102,50 @@ final class MobileChannelDeckTests: XCTestCase {
         XCTAssertTrue(playlist.contains("http://example.com:8880/live/user/pass/42.ts"))
     }
 
+    func testMobileEPGResponseDecodesProviderListingsAndBase64Text() throws {
+        let data = """
+        {
+          "epg_listings": [
+            {
+              "id": "program-1",
+              "title": "TW9ybmluZyBOZXdz",
+              "description": "TGl2ZSB1cGRhdGVz",
+              "start_timestamp": "1719820800",
+              "stop_timestamp": 1719824400
+            },
+            {
+              "title": "Plain Title",
+              "description": "",
+              "start": "2024-07-01 12:00:00",
+              "end": "2024-07-01 13:00:00"
+            }
+          ]
+        }
+        """.data(using: .utf8)!
+
+        let response = try JSONDecoder().decode(MobileEPGResponse.self, from: data)
+
+        XCTAssertEqual(response.programs.count, 2)
+        XCTAssertEqual(response.programs[0].id, "program-1")
+        XCTAssertEqual(response.programs[0].title, "Morning News")
+        XCTAssertEqual(response.programs[0].description, "Live updates")
+        XCTAssertEqual(response.programs[0].start, Date(timeIntervalSince1970: 1_719_820_800))
+        XCTAssertEqual(response.programs[0].end, Date(timeIntervalSince1970: 1_719_824_400))
+        XCTAssertEqual(response.programs[1].title, "Plain Title")
+        XCTAssertEqual(response.programs[1].fallbackStartText, "2024-07-01 12:00:00")
+    }
+
+    @MainActor
+    func testMobileGuideMarksDirectSampleStreamsUnavailable() {
+        let store = MobileIPTVStore(credentialStore: MobileCredentialStore(defaults: isolatedDefaults()))
+        store.loadSamplePlaylist()
+
+        store.play(MobileSamplePlaylistProvider.channels[0])
+
+        XCTAssertEqual(store.epgPrograms, [])
+        XCTAssertEqual(store.epgState, .unavailable)
+    }
+
     @MainActor
     func testMobileStoreImportsLocalPlaylistAsDirectChannels() throws {
         let store = MobileIPTVStore(credentialStore: MobileCredentialStore(defaults: isolatedDefaults()))

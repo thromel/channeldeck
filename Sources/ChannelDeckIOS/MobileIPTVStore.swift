@@ -14,6 +14,8 @@ final class MobileIPTVStore: ObservableObject {
     @Published var accountSummary: MobileAccountSummary?
     @Published var loadState: MobileLoadState = .idle
     @Published var playlistSourceName: String?
+    @Published private(set) var epgPrograms: [MobileEPGProgram] = []
+    @Published private(set) var epgState: MobileEPGLoadState = .idle
     @Published private(set) var pinnedChannels: [MobileIPTVChannel] = []
     @Published private(set) var recentChannels: [MobileIPTVChannel] = []
     @Published private(set) var favoriteChannelIDs: Set<MobileIPTVChannel.ID>
@@ -28,6 +30,7 @@ final class MobileIPTVStore: ObservableObject {
     private let defaults: UserDefaults
     private var pinnedChannelIDs: [MobileIPTVChannel.ID]
     private var recentChannelIDs: [MobileIPTVChannel.ID]
+    private var epgTask: Task<Void, Never>?
 
     init(
         service: MobileIPTVService = MobileIPTVService(),
@@ -141,6 +144,7 @@ final class MobileIPTVStore: ObservableObject {
         player.pause()
         player.replaceCurrentItem(with: nil)
         currentChannel = nil
+        resetEPG()
         accountSummary = nil
         playlistSourceName = MobileSamplePlaylistProvider.displayName
         clearMultiview()
@@ -170,6 +174,7 @@ final class MobileIPTVStore: ObservableObject {
             let fetchedStreams = try await liveStreams
             try credentialStore.save(credentials)
 
+            resetEPG()
             accountSummary = summary
             playlistSourceName = nil
             categories = [
@@ -196,12 +201,14 @@ final class MobileIPTVStore: ObservableObject {
         rememberRecent(channel)
         player.replaceCurrentItem(with: AVPlayerItem(url: url))
         player.play()
+        refreshCurrentEPG()
     }
 
     func stopPlayback() {
         player.pause()
         player.replaceCurrentItem(with: nil)
         currentChannel = nil
+        resetEPG()
     }
 
     @discardableResult
@@ -290,6 +297,19 @@ final class MobileIPTVStore: ObservableObject {
         persistRecentChannels()
     }
 
+    func refreshCurrentEPG() {
+        guard let currentChannel,
+              currentChannel.directSource == nil,
+              credentials.isComplete else {
+            epgTask?.cancel()
+            epgPrograms = []
+            epgState = .unavailable
+            return
+        }
+
+        loadEPG(for: currentChannel)
+    }
+
     func playInMultiview(_ channel: MobileIPTVChannel, slotID: MobileMultiviewSlot.ID? = nil) {
         guard let url = channel.streamURL(credentials: credentials) else {
             loadState = .failed("Unable to build a playable stream URL for \(channel.name).")
@@ -328,6 +348,7 @@ final class MobileIPTVStore: ObservableObject {
         accountSummary = nil
         playlistSourceName = result.sourceURL.lastPathComponent
         clearMultiview()
+        resetEPG()
         categories = [
             MobileIPTVCategory(id: MobileIPTVCategory.allID, name: "All")
         ] + result.categories
@@ -390,6 +411,39 @@ final class MobileIPTVStore: ObservableObject {
 
     private func persistRecentChannels() {
         defaults.set(recentChannelIDs, forKey: MobileDefaultsKey.recentChannelIDs)
+    }
+
+    private func loadEPG(for channel: MobileIPTVChannel) {
+        epgTask?.cancel()
+        epgPrograms = []
+        epgState = .loading
+
+        epgTask = Task { @MainActor in
+            do {
+                let programs = try await service.shortEPG(credentials: credentials, streamID: channel.id, limit: 6)
+                guard !Task.isCancelled,
+                      currentChannel?.id == channel.id else {
+                    return
+                }
+
+                epgPrograms = programs
+                epgState = programs.isEmpty ? .unavailable : .loaded
+            } catch {
+                guard !Task.isCancelled,
+                      currentChannel?.id == channel.id else {
+                    return
+                }
+
+                epgPrograms = []
+                epgState = .failed(error.localizedDescription)
+            }
+        }
+    }
+
+    private func resetEPG() {
+        epgTask?.cancel()
+        epgPrograms = []
+        epgState = .idle
     }
 }
 

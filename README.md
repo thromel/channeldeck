@@ -51,6 +51,7 @@ Website: https://thromel.github.io/channeldeck/
 - Early iOS/iPadOS app target with Home, Browse, Player, Multiview, Settings, Xtream login, Keychain password storage, and sample playback.
 - iOS/iPadOS Home dashboard with pinned, favorite, recent, and channel-count shelves.
 - iOS/iPadOS pinned channels, favorites, and recently played filters that persist locally.
+- iOS/iPadOS current-channel guide panel with Now/Next provider EPG when available.
 - iOS/iPadOS 2-4 channel multiview playback with independent volume and mute per tile.
 - Adaptive iPadOS sidebar layout with channel/player/multiview/settings navigation and live status badges.
 - iOS/iPadOS local M3U playlist import and export through the Files picker.
@@ -90,7 +91,7 @@ For command-line device builds, use the same project and scheme after Xcode can 
 xcodebuild -project ChannelDeckIOS.xcodeproj -scheme ChannelDeckIOS -destination 'platform=iOS,name=Your iPhone Name' build
 ```
 
-The mobile target currently supports a Home dashboard, persisted pins/favorites/recents, live channel browsing, single-channel AVKit playback, 2-4 channel multiview, account loading, sample playback, local M3U import/export, Keychain password storage, and an adaptive iPadOS sidebar. Recording remains macOS-only.
+The mobile target currently supports a Home dashboard, persisted pins/favorites/recents, live channel browsing, single-channel AVKit playback, current-channel guide data, 2-4 channel multiview, account loading, sample playback, local M3U import/export, Keychain password storage, and an adaptive iPadOS sidebar. Recording remains macOS-only.
 
 ## Release Build
 
@@ -114,7 +115,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 
 ## Planned Features
 
-- iOS and iPadOS feature parity for recording controls, EPG, local library, and macOS-level playback utilities.
+- iOS and iPadOS feature parity for recording controls, local library, and macOS-level playback utilities.
 - Shared core package for common Xtream models, playlist parsing, and playback helpers across macOS, iOS, and iPadOS.
 - Longer walkthrough recordings for setup, recording, and multiview playback.
 - Developer ID signing and notarization for smoother macOS installs.
