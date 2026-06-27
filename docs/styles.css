@@ -184,6 +184,31 @@ h1 {
   border-top: 1px solid var(--line);
 }
 
+.demo {
+  padding-top: 40px;
+}
+
+.demo-frame {
+  margin: 0;
+}
+
+.demo-frame img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #020305;
+  box-shadow: 0 28px 110px rgba(0, 0, 0, 0.28);
+}
+
+.demo-frame figcaption {
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
 .section-heading {
   max-width: 680px;
   margin-bottom: 28px;

@@ -8,11 +8,13 @@ ChannelDeck does not include IPTV content, playlists, provider credentials, or a
 
 Website: https://thromel.github.io/channeldeck/
 
+![ChannelDeck macOS demo](docs/assets/channeldeck-demo.gif)
+
 ## Current Status
 
 - macOS app is available now.
 - iOS and iPadOS support is planned.
-- Demo media will be added after a real recording is captured.
+- A real macOS demo recording is available on the website and in this README.
 
 ## Features
 
@@ -80,7 +82,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 
 - iOS app using the same account and playback model.
 - iPadOS app with a larger-screen channel browser and player layout.
-- Real recorded demo for the website and README.
+- Longer walkthrough recordings for setup, recording, and multiview playback.
 - Developer ID signing and notarization for smoother macOS installs.
 - Full EPG grid and richer schedule browsing.
 - More library management controls for saved channels, recording metadata, and history.
