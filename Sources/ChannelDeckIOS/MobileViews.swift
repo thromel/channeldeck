@@ -4,6 +4,7 @@ import SwiftUI
 enum MobileAppTab: String, CaseIterable, Identifiable {
     case browse
     case player
+    case multiview
     case settings
 
     var id: String { rawValue }
@@ -15,6 +16,8 @@ enum MobileAppTab: String, CaseIterable, Identifiable {
             Label("Browse", systemImage: "rectangle.grid.1x2")
         case .player:
             Label("Player", systemImage: "play.rectangle")
+        case .multiview:
+            Label("Multiview", systemImage: "rectangle.grid.2x2")
         case .settings:
             Label("Settings", systemImage: "gearshape")
         }
@@ -52,6 +55,13 @@ struct MobileRootView: View {
             }
             .tabItem { MobileAppTab.player.label }
             .tag(MobileAppTab.player)
+
+            NavigationStack {
+                MobileMultiviewView(store: store)
+                    .navigationTitle("Multiview")
+            }
+            .tabItem { MobileAppTab.multiview.label }
+            .tag(MobileAppTab.multiview)
 
             NavigationStack {
                 MobileSettingsView(store: store)
@@ -93,6 +103,30 @@ struct MobileBrowseView: View {
                                 )
                             }
                             .buttonStyle(.plain)
+                            .contextMenu {
+                                Button {
+                                    store.play(channel)
+                                    selectedTab = .player
+                                } label: {
+                                    Label("Play Now", systemImage: "play.fill")
+                                }
+
+                                Button {
+                                    store.playInMultiview(channel)
+                                    selectedTab = .multiview
+                                } label: {
+                                    Label("Add to Multiview", systemImage: "rectangle.grid.2x2")
+                                }
+                            }
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                                Button {
+                                    store.playInMultiview(channel)
+                                    selectedTab = .multiview
+                                } label: {
+                                    Label("Multiview", systemImage: "rectangle.grid.2x2")
+                                }
+                                .tint(.blue)
+                            }
                         }
                     }
                 } header: {
@@ -386,6 +420,246 @@ struct MobilePlayerPlaceholder: View {
     }
 }
 
+struct MobileMultiviewView: View {
+    @ObservedObject var store: MobileIPTVStore
+    @State private var searchText = ""
+
+    private var filteredChannels: [MobileIPTVChannel] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            return store.channels
+        }
+
+        return store.channels.filter { channel in
+            channel.name.localizedCaseInsensitiveContains(query)
+                || channel.sourceLabel.localizedCaseInsensitiveContains(query)
+        }
+    }
+
+    private var gridColumns: [GridItem] {
+        [
+            GridItem(.adaptive(minimum: 310), spacing: 12, alignment: .top)
+        ]
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                MobileMultiviewHeader(store: store)
+
+                LazyVGrid(columns: gridColumns, spacing: 12) {
+                    ForEach(store.multiviewSlots) { slot in
+                        MobileMultiviewTile(store: store, slot: slot)
+                    }
+                }
+
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Add Channel")
+                            .font(.headline)
+                        Spacer()
+                        Text("\(filteredChannels.count)")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    TextField("Search channels", text: $searchText)
+                        .textFieldStyle(.roundedBorder)
+                        .channelDeckPlainInput()
+
+                    if filteredChannels.isEmpty {
+                        ContentUnavailableView {
+                            Label("No Matches", systemImage: "magnifyingglass")
+                        } description: {
+                            Text("Try another channel name or load an account.")
+                        }
+                        .padding(.vertical, 24)
+                    } else {
+                        LazyVStack(spacing: 0) {
+                            ForEach(filteredChannels.prefix(80)) { channel in
+                                MobileMultiviewChannelPickerRow(store: store, channel: channel)
+
+                                if channel.id != filteredChannels.prefix(80).last?.id {
+                                    Divider()
+                                        .padding(.leading, 60)
+                                }
+                            }
+                        }
+                        .background(Color.secondary.opacity(0.1))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    }
+                }
+            }
+            .padding()
+        }
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    store.clearMultiview()
+                } label: {
+                    Label("Clear All", systemImage: "xmark.circle")
+                }
+                .disabled(store.activeMultiviewCount == 0)
+            }
+        }
+    }
+}
+
+struct MobileMultiviewHeader: View {
+    @ObservedObject var store: MobileIPTVStore
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "rectangle.grid.2x2")
+                .font(.title2.weight(.semibold))
+                .frame(width: 44, height: 44)
+                .foregroundStyle(Color.accentColor)
+                .background(Color.accentColor.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(store.multiviewCountLabel)
+                    .font(.headline)
+                    .lineLimit(1)
+                Text("Watch up to four channels with independent mute and volume per tile.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+        }
+        .padding()
+        .background(Color.secondary.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct MobileMultiviewTile: View {
+    @ObservedObject var store: MobileIPTVStore
+    @ObservedObject var slot: MobileMultiviewSlot
+
+    var body: some View {
+        VStack(spacing: 0) {
+            ZStack {
+                VideoPlayer(player: slot.player)
+                    .background(Color.black)
+
+                if slot.channel == nil {
+                    VStack(spacing: 10) {
+                        Image(systemName: "plus.rectangle.on.rectangle")
+                            .font(.system(size: 36, weight: .semibold))
+                            .foregroundStyle(.secondary)
+                        Text("Add channel")
+                            .font(.headline)
+                    }
+                }
+            }
+            .aspectRatio(16 / 9, contentMode: .fit)
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .firstTextBaseline, spacing: 10) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(slot.title)
+                            .font(.subheadline.weight(.semibold))
+                            .lineLimit(2)
+                        Text(slot.channel?.sourceLabel ?? "Slot \(slot.index + 1)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 8)
+
+                    Menu {
+                        ForEach(store.channels.prefix(80)) { channel in
+                            Button(channel.name) {
+                                store.playInMultiview(channel, slotID: slot.id)
+                            }
+                        }
+                    } label: {
+                        Label("Replace", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .labelStyle(.iconOnly)
+                    .disabled(store.channels.isEmpty)
+                }
+
+                HStack(spacing: 12) {
+                    Button {
+                        slot.isMuted.toggle()
+                    } label: {
+                        Image(systemName: slot.isMuted ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                            .frame(width: 28, height: 28)
+                    }
+                    .buttonStyle(.bordered)
+
+                    Slider(
+                        value: Binding(
+                            get: { Double(slot.volume) },
+                            set: { slot.volume = Float($0) }
+                        ),
+                        in: 0...1
+                    )
+                    .disabled(slot.channel == nil)
+
+                    Text("\(Int(slot.volume * 100))%")
+                        .font(.caption.monospacedDigit())
+                        .foregroundStyle(.secondary)
+                        .frame(width: 42, alignment: .trailing)
+                }
+
+                Button(role: .destructive) {
+                    store.clearMultiviewSlot(slot)
+                } label: {
+                    Label("Clear Slot", systemImage: "xmark.circle")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
+                .disabled(slot.channel == nil)
+            }
+            .padding(12)
+        }
+        .background(Color.secondary.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(Color.secondary.opacity(0.18), lineWidth: 1)
+        }
+    }
+}
+
+struct MobileMultiviewChannelPickerRow: View {
+    @ObservedObject var store: MobileIPTVStore
+    let channel: MobileIPTVChannel
+
+    var body: some View {
+        HStack(spacing: 12) {
+            MobileChannelArtwork(url: channel.iconURL)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(channel.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(2)
+                Text(channel.sourceLabel)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 12)
+
+            Button {
+                store.playInMultiview(channel)
+            } label: {
+                Label("Add", systemImage: "plus")
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.small)
+        }
+        .padding(10)
+    }
+}
+
 struct MobileSettingsView: View {
     @ObservedObject var store: MobileIPTVStore
 
@@ -430,6 +704,7 @@ struct MobileSettingsView: View {
             Section("Status") {
                 MobileStatusRow(title: store.loadState.title, detail: store.loadState.detail)
                 MobileStatusRow(title: "Channels", detail: store.channelCountLabel)
+                MobileStatusRow(title: "Multiview", detail: store.multiviewCountLabel)
 
                 if let summary = store.accountSummary {
                     MobileStatusRow(title: "Account", detail: summary.status)

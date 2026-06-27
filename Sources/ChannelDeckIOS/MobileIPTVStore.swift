@@ -13,6 +13,9 @@ final class MobileIPTVStore: ObservableObject {
     @Published var currentChannel: MobileIPTVChannel?
     @Published var accountSummary: MobileAccountSummary?
     @Published var loadState: MobileLoadState = .idle
+    @Published private(set) var multiviewSlots: [MobileMultiviewSlot] = (0..<4).map {
+        MobileMultiviewSlot(index: $0)
+    }
 
     let player = AVPlayer()
 
@@ -55,6 +58,21 @@ final class MobileIPTVStore: ObservableObject {
         }
     }
 
+    var activeMultiviewCount: Int {
+        multiviewSlots.filter { !$0.isEmpty }.count
+    }
+
+    var multiviewCountLabel: String {
+        switch activeMultiviewCount {
+        case 0:
+            "No multiview channels"
+        case 1:
+            "1 multiview channel"
+        default:
+            "\(activeMultiviewCount) multiview channels"
+        }
+    }
+
     func categoryCount(for category: MobileIPTVCategory) -> Int {
         if category.id == MobileIPTVCategory.allID {
             return channels.count
@@ -68,6 +86,7 @@ final class MobileIPTVStore: ObservableObject {
         player.replaceCurrentItem(with: nil)
         currentChannel = nil
         accountSummary = nil
+        clearMultiview()
         categories = MobileSamplePlaylistProvider.categories
         channels = MobileSamplePlaylistProvider.channels
         selectedCategoryID = MobileIPTVCategory.sampleID
@@ -120,5 +139,35 @@ final class MobileIPTVStore: ObservableObject {
         player.pause()
         player.replaceCurrentItem(with: nil)
         currentChannel = nil
+    }
+
+    func playInMultiview(_ channel: MobileIPTVChannel, slotID: MobileMultiviewSlot.ID? = nil) {
+        guard let url = channel.streamURL(credentials: credentials) else {
+            loadState = .failed("Unable to build a playable stream URL for \(channel.name).")
+            return
+        }
+
+        let slot = selectedMultiviewSlot(slotID: slotID)
+        slot.play(channel: channel, url: url)
+        objectWillChange.send()
+    }
+
+    func clearMultiviewSlot(_ slot: MobileMultiviewSlot) {
+        slot.clear()
+        objectWillChange.send()
+    }
+
+    func clearMultiview() {
+        multiviewSlots.forEach { $0.clear() }
+        objectWillChange.send()
+    }
+
+    private func selectedMultiviewSlot(slotID: MobileMultiviewSlot.ID?) -> MobileMultiviewSlot {
+        if let slotID,
+           let requestedSlot = multiviewSlots.first(where: { $0.id == slotID }) {
+            return requestedSlot
+        }
+
+        return multiviewSlots.first(where: \.isEmpty) ?? multiviewSlots[0]
     }
 }
