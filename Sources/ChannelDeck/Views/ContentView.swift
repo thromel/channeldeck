@@ -1,0 +1,89 @@
+import SwiftUI
+
+struct ContentView: View {
+    @EnvironmentObject private var accountStore: AccountStore
+    @EnvironmentObject private var iptvStore: IPTVStore
+
+    var body: some View {
+        Group {
+            if iptvStore.isTheaterMode {
+                TheaterPlayerView()
+                    .toolbar(.hidden, for: .windowToolbar)
+            } else {
+                standardPlayerLayout
+            }
+        }
+    }
+
+    private var standardPlayerLayout: some View {
+        NavigationSplitView {
+            CategorySidebarView()
+        } content: {
+            if iptvStore.isChannelBrowserVisible {
+                ChannelBrowserView()
+            } else {
+                CollapsedChannelRailView {
+                    iptvStore.isChannelBrowserVisible = true
+                }
+            }
+        } detail: {
+            PlayerDashboardView()
+        }
+        .navigationSplitViewStyle(.balanced)
+        .inspector(isPresented: $iptvStore.isAccountInspectorVisible) {
+            AccountInspectorView()
+                .environmentObject(accountStore)
+                .environmentObject(iptvStore)
+                .inspectorColumnWidth(min: 300, ideal: 340, max: 420)
+        }
+        .toolbar {
+            ToolbarItemGroup {
+                Button {
+                    Task {
+                        await iptvStore.load(account: accountStore.credentials)
+                    }
+                } label: {
+                    Label("Reload Channels", systemImage: "arrow.clockwise")
+                }
+                .help("Reload account, categories, and live channels")
+                .disabled(iptvStore.state == .loading)
+
+                Button {
+                    iptvStore.stop()
+                    WindowModeController.exitFullScreen()
+                } label: {
+                    Label("Stop", systemImage: "stop.fill")
+                }
+                .help("Stop playback")
+
+                Button {
+                    iptvStore.toggleChannelBrowser()
+                } label: {
+                    Label(iptvStore.isChannelBrowserVisible ? "Hide Channels" : "Show Channels", systemImage: iptvStore.isChannelBrowserVisible ? "sidebar.right" : "list.bullet")
+                }
+                .help(iptvStore.isChannelBrowserVisible ? "Collapse channel list" : "Show channel list")
+
+                Button {
+                    iptvStore.isChannelBrowserVisible = false
+                    iptvStore.isAccountInspectorVisible = false
+                    iptvStore.enterTheaterMode(account: accountStore.credentials)
+                    Task { @MainActor in
+                        try? await Task.sleep(for: .milliseconds(120))
+                        WindowModeController.enterFullScreen()
+                    }
+                } label: {
+                    Label("Full Screen Player", systemImage: "arrow.up.left.and.arrow.down.right")
+                }
+                .help("Enter video full screen")
+                .disabled(iptvStore.channels.isEmpty)
+
+                Button {
+                    iptvStore.toggleAccountInspector()
+                } label: {
+                    Label("Account", systemImage: "person.crop.circle")
+                }
+                .help("Show account and playback settings")
+            }
+        }
+    }
+}
