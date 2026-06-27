@@ -53,6 +53,8 @@ private struct CategoryRow: View {
         switch category.id {
         case IPTVCategory.allID:
             "tv"
+        case IPTVCategory.favoritesID:
+            "star"
         case IPTVCategory.recentID:
             "clock.arrow.circlepath"
         default:

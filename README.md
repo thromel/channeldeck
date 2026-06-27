@@ -21,6 +21,7 @@ Website: https://thromel.github.io/channeldeck/
 - Live category loading and live channel loading.
 - Channel search and category filtering.
 - Recently played category for the current session.
+- Persistent favorites with a dedicated Favorites category.
 - Native AVKit playback.
 - Full-screen theater mode.
 - Collapsible channel browser.
@@ -69,7 +70,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 - Real recorded demo for the website and README.
 - Developer ID signing and notarization for smoother macOS installs.
 - EPG guide support.
-- Favorites and pinned channels.
+- Pinned channels.
 - Persisted recently played history.
 - VOD and series support for compatible provider APIs.
 - Picture-in-picture.
@@ -84,6 +85,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 | `Space` | Play or pause the current stream |
 | `Command-[` | Previous channel |
 | `Command-]` | Next channel |
+| `Command-D` | Add or remove the current channel from favorites |
 | `Command-.` | Stop playback |
 | `Control-Command-F` | Enter or exit full-screen player |
 | `Escape` | Exit full-screen player |

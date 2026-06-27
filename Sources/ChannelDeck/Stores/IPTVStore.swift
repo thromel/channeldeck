@@ -8,6 +8,7 @@ final class IPTVStore: ObservableObject {
     @Published private(set) var accountSummary: AccountSummary?
     @Published private(set) var currentChannel: IPTVChannel?
     @Published private(set) var recentChannels: [IPTVChannel] = []
+    @Published private(set) var favoriteChannelIDs: Set<IPTVChannel.ID>
     @Published private(set) var state: IPTVLoadState = .idle
     @Published var isTheaterMode = false
     @Published var isChannelBrowserVisible = true
@@ -19,10 +20,13 @@ final class IPTVStore: ObservableObject {
     let player = AVPlayer()
 
     private let service: IPTVService
+    private let defaults: UserDefaults
     private var lastLoadedAccount: IPTVCredentials?
 
-    init(service: IPTVService = IPTVService()) {
+    init(service: IPTVService = IPTVService(), defaults: UserDefaults = .standard) {
         self.service = service
+        self.defaults = defaults
+        favoriteChannelIDs = Set(defaults.array(forKey: Keys.favoriteChannelIDs) as? [IPTVChannel.ID] ?? [])
     }
 
     var filteredChannels: [IPTVChannel] {
@@ -32,6 +36,8 @@ final class IPTVStore: ObservableObject {
             let categoryMatches: Bool
             if selectedCategoryID == IPTVCategory.allID {
                 categoryMatches = true
+            } else if selectedCategoryID == IPTVCategory.favoritesID {
+                categoryMatches = favoriteChannelIDs.contains(channel.id)
             } else if selectedCategoryID == IPTVCategory.recentID {
                 categoryMatches = recentChannels.contains(where: { $0.id == channel.id })
             } else {
@@ -45,6 +51,7 @@ final class IPTVStore: ObservableObject {
     var visibleCategories: [IPTVCategory] {
         [
             IPTVCategory(id: IPTVCategory.allID, name: "All Channels"),
+            IPTVCategory(id: IPTVCategory.favoritesID, name: "Favorites"),
             IPTVCategory(id: IPTVCategory.recentID, name: "Recently Played")
         ] + categories
     }
@@ -52,6 +59,9 @@ final class IPTVStore: ObservableObject {
     func categoryName(for id: String) -> String {
         if id == IPTVCategory.allID {
             return "All Channels"
+        }
+        if id == IPTVCategory.favoritesID {
+            return "Favorites"
         }
         if id == IPTVCategory.recentID {
             return "Recently Played"
@@ -63,6 +73,9 @@ final class IPTVStore: ObservableObject {
     func channelCount(for categoryID: String) -> Int {
         if categoryID == IPTVCategory.allID {
             return channels.count
+        }
+        if categoryID == IPTVCategory.favoritesID {
+            return channels.filter { favoriteChannelIDs.contains($0.id) }.count
         }
         if categoryID == IPTVCategory.recentID {
             return recentChannels.count
@@ -170,6 +183,28 @@ final class IPTVStore: ObservableObject {
         isAccountInspectorVisible.toggle()
     }
 
+    func isFavorite(_ channel: IPTVChannel) -> Bool {
+        favoriteChannelIDs.contains(channel.id)
+    }
+
+    func toggleFavorite(_ channel: IPTVChannel) {
+        if favoriteChannelIDs.contains(channel.id) {
+            favoriteChannelIDs.remove(channel.id)
+        } else {
+            favoriteChannelIDs.insert(channel.id)
+        }
+
+        persistFavorites()
+    }
+
+    func toggleFavoriteForCurrentChannel() {
+        guard let currentChannel else {
+            return
+        }
+
+        toggleFavorite(currentChannel)
+    }
+
     private func playAdjacent(offset: Int, account: IPTVCredentials) {
         let visibleChannels = filteredChannels
         guard !visibleChannels.isEmpty else {
@@ -192,4 +227,12 @@ final class IPTVStore: ObservableObject {
             recentChannels.removeLast(recentChannels.count - 15)
         }
     }
+
+    private func persistFavorites() {
+        defaults.set(Array(favoriteChannelIDs).sorted(), forKey: Keys.favoriteChannelIDs)
+    }
+}
+
+private enum Keys {
+    static let favoriteChannelIDs = "player.favoriteChannelIDs"
 }

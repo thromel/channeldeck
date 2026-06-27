@@ -64,6 +64,14 @@ struct ChannelDeckApp: App {
 
                 Divider()
 
+                Button(iptvStore.currentChannel.map { iptvStore.isFavorite($0) } == true ? "Remove Current Channel from Favorites" : "Add Current Channel to Favorites") {
+                    iptvStore.toggleFavoriteForCurrentChannel()
+                }
+                .keyboardShortcut("d", modifiers: [.command])
+                .disabled(iptvStore.currentChannel == nil)
+
+                Divider()
+
                 Button(iptvStore.isTheaterMode ? "Exit Full Screen Player" : "Full Screen Player") {
                     if iptvStore.isTheaterMode {
                         iptvStore.exitTheaterMode()

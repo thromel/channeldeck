@@ -54,7 +54,11 @@ struct ChannelBrowserView: View {
                     ChannelRow(
                         channel: channel,
                         categoryName: iptvStore.categoryName(for: channel.categoryID),
-                        isPlaying: iptvStore.currentChannel?.id == channel.id
+                        isPlaying: iptvStore.currentChannel?.id == channel.id,
+                        isFavorite: iptvStore.isFavorite(channel),
+                        onFavoriteToggle: {
+                            iptvStore.toggleFavorite(channel)
+                        }
                     )
                     .tag(channel.id)
                     .contentShape(Rectangle())
@@ -74,6 +78,12 @@ struct ChannelBrowserView: View {
                             Button("Open Stream URL") {
                                 WorkspaceOpener.open(url)
                             }
+                        }
+
+                        Divider()
+
+                        Button(iptvStore.isFavorite(channel) ? "Remove from Favorites" : "Add to Favorites") {
+                            iptvStore.toggleFavorite(channel)
                         }
                     }
                 }
@@ -114,6 +124,23 @@ struct CollapsedChannelRailView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if !iptvStore.favoriteChannelIDs.isEmpty {
+                Divider()
+
+                VStack(spacing: 6) {
+                    Image(systemName: "star.fill")
+                        .foregroundStyle(.yellow)
+
+                    Text("\(iptvStore.favoriteChannelIDs.count)")
+                        .font(.headline)
+                        .monospacedDigit()
+
+                    Text("saved")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             if iptvStore.currentChannel != nil {
                 Divider()
 
@@ -134,6 +161,8 @@ private struct ChannelRow: View {
     let channel: IPTVChannel
     let categoryName: String
     let isPlaying: Bool
+    let isFavorite: Bool
+    let onFavoriteToggle: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
@@ -164,6 +193,17 @@ private struct ChannelRow: View {
             }
 
             Spacer(minLength: 0)
+
+            Button {
+                onFavoriteToggle()
+            } label: {
+                Image(systemName: isFavorite ? "star.fill" : "star")
+                    .font(.caption)
+                    .foregroundStyle(isFavorite ? AnyShapeStyle(.yellow) : AnyShapeStyle(.tertiary))
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.borderless)
+            .help(isFavorite ? "Remove from favorites" : "Add to favorites")
 
             Image(systemName: "play.fill")
                 .font(.caption)
