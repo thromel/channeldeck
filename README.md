@@ -36,7 +36,7 @@ Website: https://thromel.github.io/channeldeck/
 - 2-4 channel multiview playback with independent volume and mute per tile.
 - Saved multiview layouts.
 - Local-only stream recording to `~/Movies/ChannelDeck` for authorized streams.
-- Local library for opening, revealing, refreshing, and deleting recordings and saved playlists.
+- Local library with search, type filters, sorting, and file actions for recordings and saved playlists.
 - Playback diagnostics with credential-safe copyable status reports.
 - Collapsible channel browser.
 - Optional account inspector panel.
