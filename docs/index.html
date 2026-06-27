@@ -35,7 +35,7 @@
           <h1>ChannelDeck</h1>
           <p class="lede">
             A focused macOS IPTV player for Xtream-style accounts, with live categories,
-            fast channel browsing, full-screen playback, and local credential storage.
+            fast channel browsing, full-screen playback, sample streams, and local credential storage.
           </p>
           <div class="actions">
             <a class="button primary" href="https://github.com/thromel/channeldeck/releases/latest">Download macOS build</a>
@@ -46,7 +46,7 @@
         <aside class="release-panel" aria-label="Release status">
           <div>
             <span class="label">Current release</span>
-            <strong>v0.1.12 for macOS</strong>
+            <strong>v0.1.13 for macOS</strong>
           </div>
           <div>
             <span class="label">Coming next</span>
@@ -135,6 +135,10 @@
             <p>Open authorized local playlists as direct-source live channels.</p>
           </article>
           <article>
+            <h3>Sample playlist</h3>
+            <p>Try the app with public test streams before adding provider credentials.</p>
+          </article>
+          <article>
             <h3>Playback diagnostics</h3>
             <p>Shows player status, stream host, format, and copyable error summaries without credentials.</p>
           </article>
@@ -164,9 +168,11 @@
       <section class="section note">
         <h2>Content and credentials</h2>
         <p>
-          ChannelDeck is a client only. It does not include IPTV content, subscriptions,
-          provider credentials, playlists, or authorization to access streams. Local
-          recordings and playlist exports are intended only for streams you are authorized to use.
+          ChannelDeck is a client only. It does not include IPTV subscriptions,
+          provider credentials, private provider playlists, or authorization to access streams.
+          The built-in sample playlist uses public test streams so the interface can be tried
+          without an account. Local recordings and playlist exports are intended only for streams
+          you are authorized to use.
         </p>
       </section>
     </main>

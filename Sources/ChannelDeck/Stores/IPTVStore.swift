@@ -511,8 +511,19 @@ final class IPTVStore: ObservableObject {
             return
         }
 
+        applyPlaylist(result, emptyMessage: "The selected M3U playlist did not contain playable channels.")
+    }
+
+    func loadSamplePlaylist() {
+        applyPlaylist(
+            SamplePlaylistProvider.makeResult(),
+            emptyMessage: "The sample playlist did not contain playable channels."
+        )
+    }
+
+    private func applyPlaylist(_ result: M3UImportResult, emptyMessage: String) {
         guard !result.channels.isEmpty else {
-            state = .failed("The selected M3U playlist did not contain playable channels.")
+            state = .failed(emptyMessage)
             return
         }
 

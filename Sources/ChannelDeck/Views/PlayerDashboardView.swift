@@ -80,6 +80,10 @@ private struct EmptyPlayerState: View {
                 }
 
                 HStack(spacing: 10) {
+                    DashboardActionButton(title: "Try Sample", systemImage: "play.square.stack") {
+                        iptvStore.loadSamplePlaylist()
+                    }
+
                     DashboardActionButton(title: "Quick Open", systemImage: "magnifyingglass") {
                         iptvStore.showQuickSwitcher()
                     }

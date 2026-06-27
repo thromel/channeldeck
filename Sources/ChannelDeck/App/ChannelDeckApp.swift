@@ -201,7 +201,7 @@ struct ChannelDeckApp: App {
     private let pictureInPictureService = AppServices.shared.pictureInPictureService
 
     var body: some Scene {
-        Window("ChannelDeck", id: "main") {
+        WindowGroup("ChannelDeck", id: "main") {
             RootChannelDeckView()
         }
         .defaultSize(width: 1180, height: 760)
@@ -344,6 +344,11 @@ struct ChannelDeckApp: App {
                     iptvStore.importM3UPlaylist()
                 }
                 .keyboardShortcut("o", modifiers: [.command])
+
+                Button("Load Sample Playlist") {
+                    iptvStore.loadSamplePlaylist()
+                }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
 
                 Button("Show Local Library") {
                     iptvStore.showLocalLibrary()
