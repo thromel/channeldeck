@@ -54,6 +54,9 @@ struct MobileAccountSummary: Equatable {
 
 struct MobileIPTVCategory: Identifiable, Hashable, Decodable {
     static let allID = "__all__"
+    static let pinnedID = "__pinned__"
+    static let favoritesID = "__favorites__"
+    static let recentID = "__recent__"
     static let sampleID = "__sample__"
 
     let id: String

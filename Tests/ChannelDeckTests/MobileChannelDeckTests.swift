@@ -5,15 +5,15 @@ final class MobileChannelDeckTests: XCTestCase {
     func testMobileNavigationTabsExposeStableAdaptiveShellOrder() {
         XCTAssertEqual(
             MobileAppTab.allCases.map(\.title),
-            ["Browse", "Player", "Multiview", "Settings"]
+            ["Home", "Browse", "Player", "Multiview", "Settings"]
         )
         XCTAssertEqual(
             MobileAppTab.allCases.map(\.navigationTitle),
-            ["Channels", "Player", "Multiview", "Settings"]
+            ["ChannelDeck", "Channels", "Player", "Multiview", "Settings"]
         )
         XCTAssertEqual(
             MobileAppTab.allCases.map(\.systemImage),
-            ["rectangle.grid.1x2", "play.rectangle", "rectangle.grid.2x2", "gearshape"]
+            ["house", "rectangle.grid.1x2", "play.rectangle", "rectangle.grid.2x2", "gearshape"]
         )
     }
 
@@ -127,6 +127,76 @@ final class MobileChannelDeckTests: XCTestCase {
         XCTAssertEqual(store.selectedCategoryID, "m3u:imported-news")
         XCTAssertEqual(store.channels.map(\.name), ["Alpha News", "Beta News"])
         XCTAssertTrue(store.channels.allSatisfy { $0.directSource != nil })
+    }
+
+    @MainActor
+    func testMobileStorePersistsPinsFavoritesAndRecentsAcrossLaunches() {
+        let defaults = isolatedDefaults()
+        let firstStore = MobileIPTVStore(
+            credentialStore: MobileCredentialStore(defaults: defaults),
+            defaults: defaults
+        )
+        firstStore.loadSamplePlaylist()
+
+        let bunny = MobileSamplePlaylistProvider.channels[0]
+        let sintel = MobileSamplePlaylistProvider.channels[1]
+        firstStore.togglePin(bunny)
+        firstStore.toggleFavorite(sintel)
+        firstStore.play(sintel)
+        firstStore.play(bunny)
+
+        XCTAssertEqual(firstStore.visibleCategories.map(\.id).prefix(4), [
+            MobileIPTVCategory.allID,
+            MobileIPTVCategory.pinnedID,
+            MobileIPTVCategory.favoritesID,
+            MobileIPTVCategory.recentID
+        ])
+        XCTAssertEqual(firstStore.categoryCount(for: MobileIPTVCategory.pinnedID), 1)
+        XCTAssertEqual(firstStore.categoryCount(for: MobileIPTVCategory.favoritesID), 1)
+        XCTAssertEqual(firstStore.categoryCount(for: MobileIPTVCategory.recentID), 2)
+
+        firstStore.selectedCategoryID = MobileIPTVCategory.pinnedID
+        XCTAssertEqual(firstStore.visibleChannels.map(\.name), ["Big Buck Bunny"])
+        firstStore.selectedCategoryID = MobileIPTVCategory.favoritesID
+        XCTAssertEqual(firstStore.visibleChannels.map(\.name), ["Sintel"])
+        firstStore.selectedCategoryID = MobileIPTVCategory.recentID
+        XCTAssertEqual(firstStore.visibleChannels.map(\.name), ["Big Buck Bunny", "Sintel"])
+
+        let secondStore = MobileIPTVStore(
+            credentialStore: MobileCredentialStore(defaults: defaults),
+            defaults: defaults
+        )
+        secondStore.loadSamplePlaylist()
+
+        XCTAssertEqual(secondStore.pinnedChannels.map(\.name), ["Big Buck Bunny"])
+        XCTAssertEqual(secondStore.favoriteChannels.map(\.name), ["Sintel"])
+        XCTAssertEqual(secondStore.recentChannels.map(\.name), ["Big Buck Bunny", "Sintel"])
+    }
+
+    @MainActor
+    func testMobileStoreClearsSavedChannelBuckets() {
+        let defaults = isolatedDefaults()
+        let store = MobileIPTVStore(
+            credentialStore: MobileCredentialStore(defaults: defaults),
+            defaults: defaults
+        )
+        store.loadSamplePlaylist()
+
+        let bunny = MobileSamplePlaylistProvider.channels[0]
+        store.togglePin(bunny)
+        store.toggleFavorite(bunny)
+        store.play(bunny)
+
+        store.clearPinnedChannels()
+        store.clearFavorites()
+        store.clearRecentChannels()
+
+        XCTAssertTrue(store.pinnedChannels.isEmpty)
+        XCTAssertTrue(store.favoriteChannelIDs.isEmpty)
+        XCTAssertTrue(store.recentChannels.isEmpty)
+        XCTAssertEqual(store.categoryCount(for: MobileIPTVCategory.pinnedID), 0)
+        XCTAssertEqual(store.categoryCount(for: MobileIPTVCategory.favoritesID), 0)
+        XCTAssertEqual(store.categoryCount(for: MobileIPTVCategory.recentID), 0)
     }
 
     @MainActor
