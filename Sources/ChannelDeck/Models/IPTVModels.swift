@@ -129,6 +129,121 @@ struct IPTVChannel: Identifiable, Hashable, Decodable {
     }
 }
 
+enum PlaybackDiagnosticStatus: String, Equatable {
+    case idle = "Idle"
+    case preparing = "Preparing"
+    case ready = "Ready"
+    case playing = "Playing"
+    case paused = "Paused"
+    case buffering = "Buffering"
+    case stalled = "Stalled"
+    case failed = "Failed"
+    case stopped = "Stopped"
+}
+
+struct PlaybackDiagnostics: Equatable {
+    var status: PlaybackDiagnosticStatus
+    var title: String
+    var detail: String
+    var channelName: String?
+    var streamID: Int?
+    var format: String?
+    var endpoint: String?
+    var issue: String?
+    var updatedAt: Date
+
+    static let idle = PlaybackDiagnostics(
+        status: .idle,
+        title: "Idle",
+        detail: "No channel selected.",
+        channelName: nil,
+        streamID: nil,
+        format: nil,
+        endpoint: nil,
+        issue: nil,
+        updatedAt: Date()
+    )
+
+    static func preparing(channel: IPTVChannel, account: IPTVCredentials, url: URL) -> PlaybackDiagnostics {
+        PlaybackDiagnostics(
+            status: .preparing,
+            title: "Preparing stream",
+            detail: "Creating the player item and opening the live stream.",
+            channelName: channel.name,
+            streamID: channel.id,
+            format: account.streamFormat.label,
+            endpoint: safeEndpoint(from: url),
+            issue: nil,
+            updatedAt: Date()
+        )
+    }
+
+    func updated(status: PlaybackDiagnosticStatus, title: String, detail: String, issue: String? = nil) -> PlaybackDiagnostics {
+        PlaybackDiagnostics(
+            status: status,
+            title: title,
+            detail: detail,
+            channelName: channelName,
+            streamID: streamID,
+            format: format,
+            endpoint: endpoint,
+            issue: issue,
+            updatedAt: Date()
+        )
+    }
+
+    var hasIssue: Bool {
+        status == .failed || status == .stalled
+    }
+
+    var copyText: String {
+        var lines = [
+            "ChannelDeck Playback Diagnostics",
+            "Status: \(status.rawValue)",
+            "Detail: \(detail)"
+        ]
+
+        if let issue, !issue.isEmpty {
+            lines.append("Issue: \(issue)")
+        }
+
+        if let channelName {
+            lines.append("Channel: \(channelName)")
+        }
+
+        if let streamID {
+            lines.append("Stream ID: \(streamID)")
+        }
+
+        if let format {
+            lines.append("Format: \(format)")
+        }
+
+        if let endpoint {
+            lines.append("Endpoint: \(endpoint)")
+        }
+
+        lines.append("Updated: \(updatedAt.formatted(date: .numeric, time: .standard))")
+        lines.append("Raw stream URL and credentials are intentionally omitted.")
+        return lines.joined(separator: "\n")
+    }
+
+    private static func safeEndpoint(from url: URL) -> String {
+        var endpoint = ""
+        if let scheme = url.scheme {
+            endpoint += "\(scheme)://"
+        }
+
+        endpoint += url.host ?? "unknown-host"
+
+        if let port = url.port {
+            endpoint += ":\(port)"
+        }
+
+        return endpoint
+    }
+}
+
 struct EPGProgram: Identifiable, Equatable, Decodable {
     let id: String
     let title: String

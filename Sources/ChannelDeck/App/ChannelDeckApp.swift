@@ -250,6 +250,12 @@ struct ChannelDeckApp: App {
                 .keyboardShortcut("d", modifiers: [.command, .shift])
                 .disabled(iptvStore.currentChannel == nil)
 
+                Button("Copy Playback Diagnostics") {
+                    PasteboardWriter.copy(iptvStore.playbackDiagnostics.copyText)
+                }
+                .keyboardShortcut("c", modifiers: [.command, .option])
+                .disabled(iptvStore.currentChannel == nil)
+
                 Divider()
 
                 Button(iptvStore.isTheaterMode ? "Exit Full Screen Player" : "Full Screen Player") {

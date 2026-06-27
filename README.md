@@ -26,6 +26,7 @@ Website: https://thromel.github.io/channeldeck/
 - Short EPG guide loading for the playing channel, with Now/Next display when provider data is available.
 - Native AVKit playback.
 - Full-screen theater mode.
+- Playback diagnostics with credential-safe copyable status reports.
 - Collapsible channel browser.
 - Optional account inspector panel.
 - HLS `.m3u8` and MPEG-TS `.ts` stream URL modes.
@@ -76,7 +77,6 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 - VOD and series support for compatible provider APIs.
 - Picture-in-picture.
 - M3U playlist import and export where legally supported.
-- Better playback diagnostics for unsupported codecs and provider-side stream failures.
 
 ## Keyboard Shortcuts
 
@@ -88,6 +88,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 | `Command-]` | Next channel |
 | `Command-D` | Add or remove the current channel from favorites |
 | `Command-Shift-D` | Pin or unpin the current channel |
+| `Option-Command-C` | Copy playback diagnostics |
 | `Command-.` | Stop playback |
 | `Control-Command-F` | Enter or exit full-screen player |
 | `Escape` | Exit full-screen player |

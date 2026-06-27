@@ -172,11 +172,107 @@ private struct PlayerFooter: View {
 
             if iptvStore.currentChannel != nil {
                 GuideStrip()
+                PlaybackDiagnosticsStrip()
             }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(.regularMaterial)
+    }
+}
+
+private struct PlaybackDiagnosticsStrip: View {
+    @EnvironmentObject private var iptvStore: IPTVStore
+
+    var body: some View {
+        let diagnostics = iptvStore.playbackDiagnostics
+
+        HStack(spacing: 10) {
+            Label {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(diagnostics.title)
+                        .font(.caption.weight(.semibold))
+                        .lineLimit(1)
+
+                    Text(diagnostics.issue ?? diagnostics.detail)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            } icon: {
+                Image(systemName: iconName(for: diagnostics.status))
+                    .foregroundStyle(tint(for: diagnostics.status))
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let endpoint = diagnostics.endpoint {
+                Text(endpoint)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            if let format = diagnostics.format {
+                Text(format)
+                    .font(.caption2.weight(.medium))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Button {
+                PasteboardWriter.copy(diagnostics.copyText)
+            } label: {
+                Label("Copy Diagnostics", systemImage: "doc.on.doc")
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .help("Copy playback diagnostics without stream credentials")
+        }
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(backgroundTint(for: diagnostics), in: RoundedRectangle(cornerRadius: 7))
+    }
+
+    private func iconName(for status: PlaybackDiagnosticStatus) -> String {
+        switch status {
+        case .idle:
+            "waveform.path.ecg"
+        case .preparing, .ready:
+            "dot.radiowaves.left.and.right"
+        case .playing:
+            "play.circle.fill"
+        case .paused, .stopped:
+            "pause.circle"
+        case .buffering:
+            "hourglass"
+        case .stalled:
+            "exclamationmark.triangle.fill"
+        case .failed:
+            "xmark.octagon.fill"
+        }
+    }
+
+    private func tint(for status: PlaybackDiagnosticStatus) -> Color {
+        switch status {
+        case .playing, .ready:
+            .green
+        case .buffering, .preparing:
+            .blue
+        case .stalled:
+            .orange
+        case .failed:
+            .red
+        case .idle, .paused, .stopped:
+            .secondary
+        }
+    }
+
+    private func backgroundTint(for diagnostics: PlaybackDiagnostics) -> Color {
+        if diagnostics.hasIssue {
+            return tint(for: diagnostics.status).opacity(0.16)
+        }
+
+        return Color.primary.opacity(0.04)
     }
 }
 

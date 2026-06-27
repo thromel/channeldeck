@@ -12,6 +12,7 @@ final class IPTVStore: ObservableObject {
     @Published private(set) var favoriteChannelIDs: Set<IPTVChannel.ID>
     @Published private(set) var epgPrograms: [EPGProgram] = []
     @Published private(set) var epgState: EPGLoadState = .idle
+    @Published private(set) var playbackDiagnostics: PlaybackDiagnostics = .idle
     @Published private(set) var state: IPTVLoadState = .idle
     @Published var isTheaterMode = false
     @Published var isChannelBrowserVisible = true
@@ -26,6 +27,9 @@ final class IPTVStore: ObservableObject {
     private let defaults: UserDefaults
     private var lastLoadedAccount: IPTVCredentials?
     private var epgTask: Task<Void, Never>?
+    private var playerTimeControlObservation: NSKeyValueObservation?
+    private var itemStatusObservation: NSKeyValueObservation?
+    private var itemNotificationObservers: [NSObjectProtocol] = []
     private var pinnedChannelIDs: [IPTVChannel.ID]
     private var recentChannelIDs: [IPTVChannel.ID]
 
@@ -35,6 +39,7 @@ final class IPTVStore: ObservableObject {
         favoriteChannelIDs = Set(defaults.array(forKey: Keys.favoriteChannelIDs) as? [IPTVChannel.ID] ?? [])
         pinnedChannelIDs = defaults.array(forKey: Keys.pinnedChannelIDs) as? [IPTVChannel.ID] ?? []
         recentChannelIDs = defaults.array(forKey: Keys.recentChannelIDs) as? [IPTVChannel.ID] ?? []
+        observePlayer()
     }
 
     var filteredChannels: [IPTVChannel] {
@@ -145,13 +150,21 @@ final class IPTVStore: ObservableObject {
     func play(_ channel: IPTVChannel, account: IPTVCredentials) {
         guard let url = channel.streamURL(account: account) else {
             state = .failed("Could not create a stream URL for \(channel.name).")
+            playbackDiagnostics = PlaybackDiagnostics.idle.updated(
+                status: .failed,
+                title: "Stream URL unavailable",
+                detail: "Could not create a playable URL for this channel.",
+                issue: "Missing direct source and account stream URL."
+            )
             return
         }
 
         currentChannel = channel
         selectedChannelID = channel.id
         rememberRecent(channel)
+        playbackDiagnostics = .preparing(channel: channel, account: account, url: url)
         let item = AVPlayerItem(url: url)
+        observe(item: item)
         player.replaceCurrentItem(with: item)
         player.play()
         loadEPG(for: channel, account: account)
@@ -160,7 +173,9 @@ final class IPTVStore: ObservableObject {
     func stop() {
         player.pause()
         player.replaceCurrentItem(with: nil)
+        stopObservingCurrentItem()
         currentChannel = nil
+        playbackDiagnostics = .idle
         epgTask?.cancel()
         epgTask = nil
         epgPrograms = []
@@ -353,6 +368,155 @@ final class IPTVStore: ObservableObject {
                 epgState = .failed(error.localizedDescription)
             }
         }
+    }
+
+    private func observePlayer() {
+        playerTimeControlObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in
+            Task { @MainActor in
+                self?.recordTimeControlStatus(player.timeControlStatus, reason: player.reasonForWaitingToPlay)
+            }
+        }
+    }
+
+    private func observe(item: AVPlayerItem) {
+        stopObservingCurrentItem()
+
+        itemStatusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
+            Task { @MainActor in
+                self?.recordItemStatus(item.status, error: item.error)
+            }
+        }
+
+        let failedObserver = NotificationCenter.default.addObserver(
+            forName: AVPlayerItem.failedToPlayToEndTimeNotification,
+            object: item,
+            queue: .main
+        ) { [weak self] notification in
+            let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error
+            Task { @MainActor in
+                self?.recordPlaybackFailure(error)
+            }
+        }
+
+        let stalledObserver = NotificationCenter.default.addObserver(
+            forName: AVPlayerItem.playbackStalledNotification,
+            object: item,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.recordPlaybackStall()
+            }
+        }
+
+        itemNotificationObservers = [failedObserver, stalledObserver]
+    }
+
+    private func stopObservingCurrentItem() {
+        itemStatusObservation?.invalidate()
+        itemStatusObservation = nil
+
+        for observer in itemNotificationObservers {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        itemNotificationObservers = []
+    }
+
+    private func recordItemStatus(_ status: AVPlayerItem.Status, error: Error?) {
+        guard currentChannel != nil else {
+            return
+        }
+
+        switch status {
+        case .readyToPlay:
+            playbackDiagnostics = playbackDiagnostics.updated(
+                status: .ready,
+                title: "Stream ready",
+                detail: "The stream is ready for playback."
+            )
+        case .failed:
+            recordPlaybackFailure(error)
+        case .unknown:
+            break
+        @unknown default:
+            break
+        }
+    }
+
+    private func recordTimeControlStatus(_ status: AVPlayer.TimeControlStatus, reason: AVPlayer.WaitingReason?) {
+        guard currentChannel != nil,
+              playbackDiagnostics.status != .failed else {
+            return
+        }
+
+        switch status {
+        case .playing:
+            playbackDiagnostics = playbackDiagnostics.updated(
+                status: .playing,
+                title: "Playing",
+                detail: "Live playback is active."
+            )
+        case .paused:
+            playbackDiagnostics = playbackDiagnostics.updated(
+                status: .paused,
+                title: "Paused",
+                detail: "Playback is paused."
+            )
+        case .waitingToPlayAtSpecifiedRate:
+            let detail = reason.map { "Waiting: \($0.rawValue)." } ?? "Waiting for enough stream data to continue."
+            playbackDiagnostics = playbackDiagnostics.updated(
+                status: .buffering,
+                title: "Buffering",
+                detail: detail
+            )
+        @unknown default:
+            break
+        }
+    }
+
+    private func recordPlaybackStall() {
+        guard currentChannel != nil else {
+            return
+        }
+
+        playbackDiagnostics = playbackDiagnostics.updated(
+            status: .stalled,
+            title: "Playback stalled",
+            detail: "The player stopped receiving enough data from the stream.",
+            issue: "Network, provider, or stream format interruption."
+        )
+    }
+
+    private func recordPlaybackFailure(_ error: Error?) {
+        guard currentChannel != nil else {
+            return
+        }
+
+        let issue = redactedIssue(error?.localizedDescription)
+        playbackDiagnostics = playbackDiagnostics.updated(
+            status: .failed,
+            title: "Playback failed",
+            detail: "The player could not continue this stream.",
+            issue: issue ?? "The stream failed without a detailed AVPlayer error."
+        )
+    }
+
+    private func redactedIssue(_ issue: String?) -> String? {
+        guard var issue = issue?.trimmingCharacters(in: .whitespacesAndNewlines),
+              !issue.isEmpty else {
+            return nil
+        }
+
+        if let account = lastLoadedAccount {
+            for secret in [account.username, account.password] where !secret.isEmpty {
+                issue = issue.replacingOccurrences(of: secret, with: "[redacted]")
+            }
+        }
+
+        if issue.count > 220 {
+            issue = String(issue.prefix(220)) + "..."
+        }
+
+        return issue
     }
 
     private func persistFavorites() {
