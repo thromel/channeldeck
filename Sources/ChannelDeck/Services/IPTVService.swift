@@ -24,7 +24,23 @@ struct IPTVService {
         try await fetch(account: account, action: "get_live_streams")
     }
 
-    private func fetch<T: Decodable>(account: IPTVCredentials, action: String?) async throws -> T {
+    func shortEPG(account: IPTVCredentials, streamID: IPTVChannel.ID, limit: Int = 4) async throws -> [EPGProgram] {
+        let response: EPGResponse = try await fetch(
+            account: account,
+            action: "get_short_epg",
+            queryItems: [
+                URLQueryItem(name: "stream_id", value: String(streamID)),
+                URLQueryItem(name: "limit", value: String(limit))
+            ]
+        )
+        return response.programs
+    }
+
+    private func fetch<T: Decodable>(
+        account: IPTVCredentials,
+        action: String?,
+        queryItems additionalQueryItems: [URLQueryItem] = []
+    ) async throws -> T {
         guard var components = URLComponents(string: account.serverURL.trimmingCharacters(in: CharacterSet(charactersIn: "/")) + "/player_api.php") else {
             throw IPTVServiceError.invalidServerURL
         }
@@ -38,6 +54,7 @@ struct IPTVService {
             queryItems.append(URLQueryItem(name: "action", value: action))
         }
 
+        queryItems.append(contentsOf: additionalQueryItems)
         components.queryItems = queryItems
 
         guard let url = components.url else {

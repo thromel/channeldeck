@@ -9,6 +9,8 @@ final class IPTVStore: ObservableObject {
     @Published private(set) var currentChannel: IPTVChannel?
     @Published private(set) var recentChannels: [IPTVChannel] = []
     @Published private(set) var favoriteChannelIDs: Set<IPTVChannel.ID>
+    @Published private(set) var epgPrograms: [EPGProgram] = []
+    @Published private(set) var epgState: EPGLoadState = .idle
     @Published private(set) var state: IPTVLoadState = .idle
     @Published var isTheaterMode = false
     @Published var isChannelBrowserVisible = true
@@ -22,6 +24,7 @@ final class IPTVStore: ObservableObject {
     private let service: IPTVService
     private let defaults: UserDefaults
     private var lastLoadedAccount: IPTVCredentials?
+    private var epgTask: Task<Void, Never>?
 
     init(service: IPTVService = IPTVService(), defaults: UserDefaults = .standard) {
         self.service = service
@@ -133,12 +136,17 @@ final class IPTVStore: ObservableObject {
         let item = AVPlayerItem(url: url)
         player.replaceCurrentItem(with: item)
         player.play()
+        loadEPG(for: channel, account: account)
     }
 
     func stop() {
         player.pause()
         player.replaceCurrentItem(with: nil)
         currentChannel = nil
+        epgTask?.cancel()
+        epgTask = nil
+        epgPrograms = []
+        epgState = .idle
         isTheaterMode = false
     }
 
@@ -205,6 +213,14 @@ final class IPTVStore: ObservableObject {
         toggleFavorite(currentChannel)
     }
 
+    func refreshCurrentEPG(account: IPTVCredentials) {
+        guard let currentChannel else {
+            return
+        }
+
+        loadEPG(for: currentChannel, account: account)
+    }
+
     private func playAdjacent(offset: Int, account: IPTVCredentials) {
         let visibleChannels = filteredChannels
         guard !visibleChannels.isEmpty else {
@@ -225,6 +241,33 @@ final class IPTVStore: ObservableObject {
         recentChannels.insert(channel, at: 0)
         if recentChannels.count > 15 {
             recentChannels.removeLast(recentChannels.count - 15)
+        }
+    }
+
+    private func loadEPG(for channel: IPTVChannel, account: IPTVCredentials) {
+        epgTask?.cancel()
+        epgPrograms = []
+        epgState = .loading
+
+        epgTask = Task { @MainActor in
+            do {
+                let programs = try await service.shortEPG(account: account, streamID: channel.id)
+                guard !Task.isCancelled,
+                      currentChannel?.id == channel.id else {
+                    return
+                }
+
+                epgPrograms = programs
+                epgState = programs.isEmpty ? .unavailable : .loaded
+            } catch {
+                guard !Task.isCancelled,
+                      currentChannel?.id == channel.id else {
+                    return
+                }
+
+                epgPrograms = []
+                epgState = .failed(error.localizedDescription)
+            }
         }
     }
 

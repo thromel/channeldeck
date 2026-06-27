@@ -22,6 +22,7 @@ Website: https://thromel.github.io/channeldeck/
 - Channel search and category filtering.
 - Recently played category for the current session.
 - Persistent favorites with a dedicated Favorites category.
+- Short EPG guide loading for the playing channel, with Now/Next display when provider data is available.
 - Native AVKit playback.
 - Full-screen theater mode.
 - Collapsible channel browser.
@@ -69,7 +70,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 - iPadOS app with a larger-screen channel browser and player layout.
 - Real recorded demo for the website and README.
 - Developer ID signing and notarization for smoother macOS installs.
-- EPG guide support.
+- Full EPG grid and richer schedule browsing.
 - Pinned channels.
 - Persisted recently played history.
 - VOD and series support for compatible provider APIs.

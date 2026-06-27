@@ -51,6 +51,13 @@ struct TheaterPlayerView: View {
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
                     }
+
+                    if let program = iptvStore.epgPrograms.first {
+                        Text("Now: \(program.title)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)

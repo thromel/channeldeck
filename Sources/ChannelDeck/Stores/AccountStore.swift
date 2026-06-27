@@ -11,7 +11,13 @@ final class AccountStore: ObservableObject {
     }
 
     @Published var password: String {
-        didSet { try? KeychainService.save(password, account: Keys.passwordAccount) }
+        didSet {
+            guard !isRestoringPassword else {
+                return
+            }
+
+            try? KeychainService.save(password, account: Keys.passwordAccount)
+        }
     }
 
     @Published var streamFormat: StreamFormat {
@@ -19,6 +25,8 @@ final class AccountStore: ObservableObject {
     }
 
     private let defaults: UserDefaults
+    private var isRestoringPassword = false
+    private var didRestorePassword = false
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -27,7 +35,7 @@ final class AccountStore: ObservableObject {
             ?? ""
         username = defaults.string(forKey: Keys.username)
             ?? ""
-        password = (try? KeychainService.read(account: Keys.passwordAccount)) ?? ""
+        password = ""
 
         let rawFormat = defaults.string(forKey: Keys.streamFormat)
             ?? StreamFormat.hls.rawValue
@@ -36,6 +44,21 @@ final class AccountStore: ObservableObject {
         defaults.set(serverURL, forKey: Keys.serverURL)
         defaults.set(username, forKey: Keys.username)
         defaults.set(streamFormat.rawValue, forKey: Keys.streamFormat)
+    }
+
+    func restoreSavedPassword() async {
+        guard !didRestorePassword else {
+            return
+        }
+
+        didRestorePassword = true
+        let savedPassword = await Task.detached(priority: .userInitiated) {
+            (try? KeychainService.read(account: Keys.passwordAccount)) ?? ""
+        }.value
+
+        isRestoringPassword = true
+        password = savedPassword
+        isRestoringPassword = false
     }
 
     var credentials: IPTVCredentials {
