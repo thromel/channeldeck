@@ -20,7 +20,7 @@ Website: https://thromel.github.io/channeldeck/
 - Account validation through `player_api.php`.
 - Live category loading and live channel loading.
 - Channel search and category filtering.
-- Recently played category for the current session.
+- Recently played category that persists across launches.
 - Persistent favorites with a dedicated Favorites category.
 - Short EPG guide loading for the playing channel, with Now/Next display when provider data is available.
 - Native AVKit playback.
@@ -72,7 +72,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 - Developer ID signing and notarization for smoother macOS installs.
 - Full EPG grid and richer schedule browsing.
 - Pinned channels.
-- Persisted recently played history.
+- More library management controls for saved and recently played channels.
 - VOD and series support for compatible provider APIs.
 - Picture-in-picture.
 - M3U playlist import and export where legally supported.

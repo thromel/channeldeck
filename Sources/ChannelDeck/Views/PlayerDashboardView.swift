@@ -33,8 +33,10 @@ private struct VideoStage: View {
 }
 
 private struct EmptyPlayerState: View {
+    @EnvironmentObject private var iptvStore: IPTVStore
+
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
             Image(systemName: "play.rectangle")
                 .font(.system(size: 58, weight: .regular))
                 .foregroundStyle(.secondary)
@@ -47,8 +49,35 @@ private struct EmptyPlayerState: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+
+            if !iptvStore.channels.isEmpty {
+                HStack(spacing: 8) {
+                    EmptyStatePill(label: "Favorites", value: iptvStore.favoriteChannelIDs.count, systemImage: "star.fill")
+                    EmptyStatePill(label: "Recent", value: iptvStore.recentChannels.count, systemImage: "clock.arrow.circlepath")
+                }
+            }
         }
         .padding(28)
+    }
+}
+
+private struct EmptyStatePill: View {
+    let label: String
+    let value: Int
+    let systemImage: String
+
+    var body: some View {
+        Label {
+            Text("\(label) \(value)")
+                .monospacedDigit()
+        } icon: {
+            Image(systemName: systemImage)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 6)
+        .background(.quaternary, in: Capsule())
     }
 }
 

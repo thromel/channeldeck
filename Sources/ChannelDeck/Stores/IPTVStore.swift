@@ -25,11 +25,13 @@ final class IPTVStore: ObservableObject {
     private let defaults: UserDefaults
     private var lastLoadedAccount: IPTVCredentials?
     private var epgTask: Task<Void, Never>?
+    private var recentChannelIDs: [IPTVChannel.ID]
 
     init(service: IPTVService = IPTVService(), defaults: UserDefaults = .standard) {
         self.service = service
         self.defaults = defaults
         favoriteChannelIDs = Set(defaults.array(forKey: Keys.favoriteChannelIDs) as? [IPTVChannel.ID] ?? [])
+        recentChannelIDs = defaults.array(forKey: Keys.recentChannelIDs) as? [IPTVChannel.ID] ?? []
     }
 
     var filteredChannels: [IPTVChannel] {
@@ -113,6 +115,7 @@ final class IPTVStore: ObservableObject {
             channels = try await fetchedChannels.sorted { lhs, rhs in
                 lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
+            restoreRecentChannels()
             lastLoadedAccount = account
             state = .loaded(Date())
 
@@ -213,6 +216,12 @@ final class IPTVStore: ObservableObject {
         toggleFavorite(currentChannel)
     }
 
+    func clearRecentChannels() {
+        recentChannelIDs = []
+        recentChannels = []
+        persistRecentChannels()
+    }
+
     func refreshCurrentEPG(account: IPTVCredentials) {
         guard let currentChannel else {
             return
@@ -237,10 +246,28 @@ final class IPTVStore: ObservableObject {
     }
 
     private func rememberRecent(_ channel: IPTVChannel) {
+        recentChannelIDs.removeAll { $0 == channel.id }
+        recentChannelIDs.insert(channel.id, at: 0)
+        if recentChannelIDs.count > 15 {
+            recentChannelIDs.removeLast(recentChannelIDs.count - 15)
+        }
+        persistRecentChannels()
+
         recentChannels.removeAll { $0.id == channel.id }
         recentChannels.insert(channel, at: 0)
         if recentChannels.count > 15 {
             recentChannels.removeLast(recentChannels.count - 15)
+        }
+    }
+
+    private func restoreRecentChannels() {
+        let channelByID = Dictionary(uniqueKeysWithValues: channels.map { ($0.id, $0) })
+        recentChannels = recentChannelIDs.compactMap { channelByID[$0] }
+
+        let restoredIDs = recentChannels.map(\.id)
+        if restoredIDs != recentChannelIDs {
+            recentChannelIDs = restoredIDs
+            persistRecentChannels()
         }
     }
 
@@ -274,8 +301,13 @@ final class IPTVStore: ObservableObject {
     private func persistFavorites() {
         defaults.set(Array(favoriteChannelIDs).sorted(), forKey: Keys.favoriteChannelIDs)
     }
+
+    private func persistRecentChannels() {
+        defaults.set(recentChannelIDs, forKey: Keys.recentChannelIDs)
+    }
 }
 
 private enum Keys {
     static let favoriteChannelIDs = "player.favoriteChannelIDs"
+    static let recentChannelIDs = "player.recentChannelIDs"
 }

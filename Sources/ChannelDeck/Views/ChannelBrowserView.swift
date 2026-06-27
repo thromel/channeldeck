@@ -16,7 +16,7 @@ struct ChannelBrowserView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(iptvStore.categoryName(for: iptvStore.selectedCategoryID))
@@ -35,6 +35,24 @@ struct ChannelBrowserView: View {
                         .controlSize(.small)
                 }
             }
+
+            HStack(spacing: 8) {
+                BrowserStatPill(title: "Favorites", value: iptvStore.favoriteChannelIDs.count, systemImage: "star.fill", tint: .yellow)
+                BrowserStatPill(title: "Recent", value: iptvStore.recentChannels.count, systemImage: "clock.arrow.circlepath", tint: .blue)
+
+                Spacer(minLength: 0)
+
+                if iptvStore.selectedCategoryID == IPTVCategory.recentID,
+                   !iptvStore.recentChannels.isEmpty {
+                    Button {
+                        iptvStore.clearRecentChannels()
+                    } label: {
+                        Label("Clear Recents", systemImage: "xmark.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Clear recently played channels")
+                }
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
@@ -46,7 +64,7 @@ struct ChannelBrowserView: View {
             ContentUnavailableView("Loading Channels", systemImage: "antenna.radiowaves.left.and.right", description: Text("Fetching categories and live streams."))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else if iptvStore.filteredChannels.isEmpty {
-            ContentUnavailableView("No Channels", systemImage: "tv", description: Text("Change the category or search text."))
+            ContentUnavailableView(emptyTitle, systemImage: emptyIcon, description: Text(emptyDescription))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             List(selection: $iptvStore.selectedChannelID) {
@@ -85,11 +103,85 @@ struct ChannelBrowserView: View {
                         Button(iptvStore.isFavorite(channel) ? "Remove from Favorites" : "Add to Favorites") {
                             iptvStore.toggleFavorite(channel)
                         }
+
+                        if iptvStore.selectedCategoryID == IPTVCategory.recentID {
+                            Button("Clear Recently Played") {
+                                iptvStore.clearRecentChannels()
+                            }
+                        }
                     }
+                    .listRowBackground(
+                        iptvStore.currentChannel?.id == channel.id
+                            ? Color.accentColor.opacity(0.10)
+                            : Color.clear
+                    )
                 }
             }
             .listStyle(.inset)
         }
+    }
+
+    private var emptyTitle: String {
+        if !iptvStore.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "No Search Results"
+        }
+
+        switch iptvStore.selectedCategoryID {
+        case IPTVCategory.favoritesID:
+            return "No Favorites Yet"
+        case IPTVCategory.recentID:
+            return "No Recent Channels"
+        default:
+            return "No Channels"
+        }
+    }
+
+    private var emptyIcon: String {
+        switch iptvStore.selectedCategoryID {
+        case IPTVCategory.favoritesID:
+            return "star"
+        case IPTVCategory.recentID:
+            return "clock.arrow.circlepath"
+        default:
+            return "tv"
+        }
+    }
+
+    private var emptyDescription: String {
+        if !iptvStore.searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Try a different search term or switch categories."
+        }
+
+        switch iptvStore.selectedCategoryID {
+        case IPTVCategory.favoritesID:
+            return "Use the star button on any channel to save it here."
+        case IPTVCategory.recentID:
+            return "Played channels will appear here and stay available after relaunch."
+        default:
+            return "Change the category or reload channels."
+        }
+    }
+}
+
+private struct BrowserStatPill: View {
+    let title: String
+    let value: Int
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        Label {
+            Text("\(title) \(value)")
+                .monospacedDigit()
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(tint)
+        }
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(.quaternary, in: Capsule())
     }
 }
 
