@@ -13,7 +13,7 @@ Website: https://thromel.github.io/channeldeck/
 ## Current Status
 
 - macOS app is available now.
-- iOS and iPadOS support is planned.
+- iOS and iPadOS app source is available now as an early device-build target.
 - A real macOS demo recording is available on the website and in this README.
 - A built-in sample playlist with public test streams lets new users try the interface without entering provider credentials.
 
@@ -48,9 +48,12 @@ Website: https://thromel.github.io/channeldeck/
 - Copy stream URL fallback.
 - Open stream URL fallback for external players or browser handoff.
 - Password storage in the macOS Keychain.
+- Early iOS/iPadOS app target with Browse, Player, Settings, Xtream login, Keychain password storage, and sample playback.
 - Generic public builds with no provider server, username, password, or private provider playlist bundled.
 
 ## Run
+
+### macOS
 
 ```bash
 ./script/build_and_run.sh
@@ -63,6 +66,26 @@ For a build plus launch check:
 ```
 
 The Codex desktop Run action is wired to the same script through `.codex/environments/environment.toml`.
+
+### iOS and iPadOS
+
+The early mobile app lives in `Sources/ChannelDeckIOS` and is wrapped by `ChannelDeckIOS.xcodeproj`.
+
+To run on a physical iPhone or iPad:
+
+1. Open `ChannelDeckIOS.xcodeproj` in Xcode.
+2. Select the `ChannelDeckIOS` scheme.
+3. Select your connected, unlocked, trusted iPhone or iPad.
+4. In Signing & Capabilities, choose your Apple development team for bundle id `io.github.thromel.channeldeck`.
+5. Press Run.
+
+For command-line device builds, use the same project and scheme after Xcode can see the device and signing is configured:
+
+```bash
+xcodebuild -project ChannelDeckIOS.xcodeproj -scheme ChannelDeckIOS -destination 'platform=iOS,name=Your iPhone Name' build
+```
+
+The mobile target currently supports live channel browsing, single-channel AVKit playback, account loading, sample playback, and Keychain password storage. Multiview, recording, local playlist import/export, and the full macOS dashboard are still macOS-only.
 
 ## Release Build
 
@@ -77,6 +100,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 ## Notes
 
 - Passwords are stored in the macOS Keychain.
+- iOS passwords are stored in the iOS Keychain.
 - Some IPTV provider servers use HTTP, so the local app bundle allows HTTP network/media loads.
 - The app currently focuses on live TV. VOD/series support can be added through the same API.
 - Local recordings and M3U exports are for streams you are authorized to access. M3U files contain playable stream URLs.
@@ -85,8 +109,9 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 
 ## Planned Features
 
-- iOS app using the same account and playback model.
-- iPadOS app with a larger-screen channel browser and player layout.
+- iOS and iPadOS feature parity for multiview, recording controls, local playlist import/export, and richer dashboard browsing.
+- iPadOS-optimized split layouts for larger-screen channel browsing and playback.
+- Shared core package for common Xtream models, playlist parsing, and playback helpers across macOS, iOS, and iPadOS.
 - Longer walkthrough recordings for setup, recording, and multiview playback.
 - Developer ID signing and notarization for smoother macOS installs.
 - Full EPG grid and richer schedule browsing.

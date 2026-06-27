@@ -4,10 +4,12 @@ import PackageDescription
 let package = Package(
     name: "ChannelDeck",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v14),
+        .iOS(.v17)
     ],
     products: [
-        .executable(name: "ChannelDeck", targets: ["ChannelDeck"])
+        .executable(name: "ChannelDeck", targets: ["ChannelDeck"]),
+        .executable(name: "ChannelDeckIOS", targets: ["ChannelDeckIOS"])
     ],
     targets: [
         .executableTarget(
@@ -20,9 +22,18 @@ let package = Package(
                 .linkedFramework("Security")
             ]
         ),
+        .executableTarget(
+            name: "ChannelDeckIOS",
+            path: "Sources/ChannelDeckIOS",
+            linkerSettings: [
+                .linkedFramework("AVFoundation"),
+                .linkedFramework("AVKit"),
+                .linkedFramework("Security")
+            ]
+        ),
         .testTarget(
             name: "ChannelDeckTests",
-            dependencies: ["ChannelDeck"],
+            dependencies: ["ChannelDeck", "ChannelDeckIOS"],
             path: "Tests/ChannelDeckTests"
         )
     ]

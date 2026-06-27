@@ -3,3 +3,7 @@ dist/
 outputs/
 .DS_Store
 work/
+DerivedData/
+*.xcresult
+*.xcuserstate
+xcuserdata/
