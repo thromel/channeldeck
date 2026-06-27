@@ -28,6 +28,7 @@ Website: https://thromel.github.io/channeldeck/
 - Short EPG guide loading for the playing channel, with Now/Next display and a richer guide panel when provider data is available.
 - Native AVKit playback.
 - Full-screen theater mode.
+- Picture-in-picture for the primary live player.
 - 2-4 channel multiview playback with independent volume and mute per tile.
 - Saved multiview layouts.
 - Local-only stream recording to `~/Movies/ChannelDeck` for authorized streams.
@@ -83,7 +84,6 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 - Full EPG grid and richer schedule browsing.
 - More library management controls for saved channels, recording metadata, and history.
 - VOD and series support for compatible provider APIs.
-- Picture-in-picture.
 - M3U playlist import where legally supported.
 
 ## Keyboard Shortcuts
@@ -99,6 +99,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 | `Command-Shift-D` | Pin or unpin the current channel |
 | `Option-Command-M` | Show multiview |
 | `Option-Command-G` | Show current channel guide |
+| `Option-Command-P` | Start or stop picture-in-picture |
 | `Command-Shift-R` | Start or stop recording the current stream |
 | `Option-Command-S` | Save local M3U playlist |
 | `Option-Command-J` | Show local recordings and saved playlists |

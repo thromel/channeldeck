@@ -3,6 +3,7 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject private var accountStore: AccountStore
     @EnvironmentObject private var iptvStore: IPTVStore
+    @EnvironmentObject private var pictureInPictureService: PictureInPictureService
 
     var body: some View {
         Group {
@@ -115,6 +116,14 @@ struct ContentView: View {
                 }
                 .help("Enter video full screen")
                 .disabled(iptvStore.channels.isEmpty)
+
+                Button {
+                    pictureInPictureService.toggle()
+                } label: {
+                    Label(pictureInPictureService.label, systemImage: pictureInPictureService.isActive ? "pip.exit" : "pip.enter")
+                }
+                .help(pictureInPictureService.label)
+                .disabled(iptvStore.currentChannel == nil || !pictureInPictureService.canToggle)
 
                 Button {
                     iptvStore.saveM3UPlaylist(account: accountStore.credentials)

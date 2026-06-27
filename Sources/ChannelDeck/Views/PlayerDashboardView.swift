@@ -328,6 +328,7 @@ private struct DashboardChannelTile: View {
 private struct PlayerFooter: View {
     @EnvironmentObject private var accountStore: AccountStore
     @EnvironmentObject private var iptvStore: IPTVStore
+    @EnvironmentObject private var pictureInPictureService: PictureInPictureService
 
     var body: some View {
         VStack(spacing: 10) {
@@ -392,6 +393,14 @@ private struct PlayerFooter: View {
                     }
 
                     Button {
+                        pictureInPictureService.toggle()
+                    } label: {
+                        Label(pictureInPictureService.label, systemImage: pictureInPictureService.isActive ? "pip.exit" : "pip.enter")
+                    }
+                    .help(pictureInPictureService.label)
+                    .disabled(!pictureInPictureService.canToggle)
+
+                    Button {
                         iptvStore.togglePrimaryRecording(account: accountStore.credentials)
                     } label: {
                         Label(iptvStore.primaryRecording?.isActive == true ? "Stop Recording" : "Record", systemImage: iptvStore.primaryRecording?.isActive == true ? "stop.circle.fill" : "record.circle")
@@ -423,6 +432,7 @@ private struct PlayerFooter: View {
             if iptvStore.currentChannel != nil {
                 GuideStrip()
                 PlaybackDiagnosticsStrip()
+                PictureInPictureStatusStrip()
                 if let recording = iptvStore.primaryRecording {
                     RecordingStatusView(recording: recording) {
                         iptvStore.revealPrimaryRecording()
@@ -433,6 +443,34 @@ private struct PlayerFooter: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(.regularMaterial)
+    }
+}
+
+private struct PictureInPictureStatusStrip: View {
+    @EnvironmentObject private var pictureInPictureService: PictureInPictureService
+
+    var body: some View {
+        if pictureInPictureService.isActive || pictureInPictureService.issue != nil {
+            HStack(spacing: 8) {
+                Image(systemName: pictureInPictureService.isActive ? "pip.fill" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(pictureInPictureService.isActive ? .green : .orange)
+
+                Text(pictureInPictureService.isActive ? "Picture in Picture is active" : "Picture in Picture unavailable")
+                    .font(.caption.weight(.semibold))
+
+                if let issue = pictureInPictureService.issue {
+                    Text(issue)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 7)
+            .background((pictureInPictureService.isActive ? Color.green : Color.orange).opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+        }
     }
 }
 

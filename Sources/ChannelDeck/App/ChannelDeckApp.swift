@@ -5,10 +5,15 @@ import SwiftUI
 final class AppServices {
     static let shared = AppServices()
 
-    let accountStore = AccountStore()
-    let iptvStore = IPTVStore()
+    let accountStore: AccountStore
+    let iptvStore: IPTVStore
+    let pictureInPictureService: PictureInPictureService
 
-    private init() {}
+    private init() {
+        accountStore = AccountStore()
+        iptvStore = IPTVStore()
+        pictureInPictureService = PictureInPictureService(player: iptvStore.player)
+    }
 }
 
 @MainActor
@@ -193,6 +198,7 @@ struct ChannelDeckApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     private let accountStore = AppServices.shared.accountStore
     private let iptvStore = AppServices.shared.iptvStore
+    private let pictureInPictureService = AppServices.shared.pictureInPictureService
 
     var body: some Scene {
         Window("ChannelDeck", id: "main") {
@@ -255,6 +261,12 @@ struct ChannelDeckApp: App {
                 }
                 .keyboardShortcut("c", modifiers: [.command, .option])
                 .disabled(iptvStore.currentChannel == nil)
+
+                Button(pictureInPictureService.label) {
+                    pictureInPictureService.toggle()
+                }
+                .keyboardShortcut("p", modifiers: [.command, .option])
+                .disabled(iptvStore.currentChannel == nil || !pictureInPictureService.canToggle)
 
                 Button(iptvStore.primaryRecording?.isActive == true ? "Stop Recording Current Stream" : "Record Current Stream") {
                     iptvStore.togglePrimaryRecording(account: accountStore.credentials)
@@ -358,11 +370,13 @@ struct ChannelDeckApp: App {
 private struct RootChannelDeckView: View {
     @ObservedObject private var accountStore = AppServices.shared.accountStore
     @ObservedObject private var iptvStore = AppServices.shared.iptvStore
+    @ObservedObject private var pictureInPictureService = AppServices.shared.pictureInPictureService
 
     var body: some View {
         ContentView()
             .environmentObject(accountStore)
             .environmentObject(iptvStore)
+            .environmentObject(pictureInPictureService)
             .frame(minWidth: 1040, minHeight: 680)
             .background(WindowRepairView())
             .task {

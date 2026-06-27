@@ -4,6 +4,7 @@ import SwiftUI
 struct TheaterPlayerView: View {
     @EnvironmentObject private var accountStore: AccountStore
     @EnvironmentObject private var iptvStore: IPTVStore
+    @EnvironmentObject private var pictureInPictureService: PictureInPictureService
 
     @State private var controlsVisible = true
     @State private var keyMonitor: Any?
@@ -64,6 +65,16 @@ struct TheaterPlayerView: View {
                 .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 10))
 
                 Spacer()
+
+                Button {
+                    pictureInPictureService.toggle()
+                } label: {
+                    Label("PiP", systemImage: pictureInPictureService.isActive ? "pip.exit" : "pip.enter")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.large)
+                .disabled(iptvStore.currentChannel == nil || !pictureInPictureService.canToggle)
+                .help(pictureInPictureService.label)
 
                 Button {
                     exitTheaterMode()
