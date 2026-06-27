@@ -16,6 +16,9 @@ final class MobileIPTVStore: ObservableObject {
     @Published var playlistSourceName: String?
     @Published private(set) var epgPrograms: [MobileEPGProgram] = []
     @Published private(set) var epgState: MobileEPGLoadState = .idle
+    @Published private(set) var primaryRecording: MobileLocalStreamRecording?
+    @Published private(set) var localMediaItems: [MobileLocalMediaItem] = []
+    @Published private(set) var localMediaIssue: String?
     @Published private(set) var pinnedChannels: [MobileIPTVChannel] = []
     @Published private(set) var recentChannels: [MobileIPTVChannel] = []
     @Published private(set) var favoriteChannelIDs: Set<MobileIPTVChannel.ID>
@@ -119,6 +122,10 @@ final class MobileIPTVStore: ObservableObject {
         }
     }
 
+    var localMediaSummary: MobileLocalMediaSummary {
+        MobileLocalMediaBrowser.summary(for: localMediaItems)
+    }
+
     func categoryCount(for category: MobileIPTVCategory) -> Int {
         categoryCount(for: category.id)
     }
@@ -143,6 +150,8 @@ final class MobileIPTVStore: ObservableObject {
     func loadSamplePlaylist() {
         player.pause()
         player.replaceCurrentItem(with: nil)
+        primaryRecording?.stop()
+        primaryRecording = nil
         currentChannel = nil
         resetEPG()
         accountSummary = nil
@@ -174,6 +183,8 @@ final class MobileIPTVStore: ObservableObject {
             let fetchedStreams = try await liveStreams
             try credentialStore.save(credentials)
 
+            primaryRecording?.stop()
+            primaryRecording = nil
             resetEPG()
             accountSummary = summary
             playlistSourceName = nil
@@ -207,8 +218,11 @@ final class MobileIPTVStore: ObservableObject {
     func stopPlayback() {
         player.pause()
         player.replaceCurrentItem(with: nil)
+        primaryRecording?.stop()
+        primaryRecording = nil
         currentChannel = nil
         resetEPG()
+        refreshLocalMediaLibrary()
     }
 
     @discardableResult
@@ -310,6 +324,47 @@ final class MobileIPTVStore: ObservableObject {
         loadEPG(for: currentChannel)
     }
 
+    func togglePrimaryRecording() {
+        if primaryRecording?.isActive == true {
+            primaryRecording?.stop()
+            refreshLocalMediaLibrary()
+            return
+        }
+
+        guard let currentChannel,
+              let url = currentChannel.streamURL(credentials: credentials) else {
+            loadState = .failed("Unable to build a recordable stream URL.")
+            return
+        }
+
+        guard let recording = makeRecording(channel: currentChannel, url: url) else {
+            return
+        }
+
+        primaryRecording = recording
+        recording.start()
+        refreshLocalMediaLibrary()
+    }
+
+    func refreshLocalMediaLibrary() {
+        do {
+            localMediaItems = try MobileLocalMediaLibrary.scan()
+            localMediaIssue = nil
+        } catch {
+            localMediaItems = []
+            localMediaIssue = error.localizedDescription
+        }
+    }
+
+    func deleteLocalMedia(_ item: MobileLocalMediaItem) {
+        do {
+            try MobileLocalMediaLibrary.remove(item)
+            refreshLocalMediaLibrary()
+        } catch {
+            localMediaIssue = error.localizedDescription
+        }
+    }
+
     func playInMultiview(_ channel: MobileIPTVChannel, slotID: MobileMultiviewSlot.ID? = nil) {
         guard let url = channel.streamURL(credentials: credentials) else {
             loadState = .failed("Unable to build a playable stream URL for \(channel.name).")
@@ -344,6 +399,8 @@ final class MobileIPTVStore: ObservableObject {
     private func applyImportedPlaylist(_ result: MobileM3UImportResult) {
         player.pause()
         player.replaceCurrentItem(with: nil)
+        primaryRecording?.stop()
+        primaryRecording = nil
         currentChannel = nil
         accountSummary = nil
         playlistSourceName = result.sourceURL.lastPathComponent
@@ -411,6 +468,17 @@ final class MobileIPTVStore: ObservableObject {
 
     private func persistRecentChannels() {
         defaults.set(recentChannelIDs, forKey: MobileDefaultsKey.recentChannelIDs)
+    }
+
+    private func makeRecording(channel: MobileIPTVChannel, url: URL) -> MobileLocalStreamRecording? {
+        do {
+            let fileURL = try MobileLocalStreamRecording.defaultOutputURL(channel: channel, streamURL: url)
+            return MobileLocalStreamRecording(channel: channel, streamURL: url, fileURL: fileURL)
+        } catch {
+            loadState = .failed("Could not create a local recording file.")
+            localMediaIssue = error.localizedDescription
+            return nil
+        }
     }
 
     private func loadEPG(for channel: MobileIPTVChannel) {

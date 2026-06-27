@@ -14,6 +14,7 @@
 		CD1000000000000000000005 /* MobileViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD2000000000000000000005 /* MobileViews.swift */; };
 		CD1000000000000000000006 /* MobileMultiviewSlot.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD2000000000000000000008 /* MobileMultiviewSlot.swift */; };
 		CD1000000000000000000007 /* MobileM3UPlaylist.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD2000000000000000000009 /* MobileM3UPlaylist.swift */; };
+		CD1000000000000000000008 /* MobileLocalMedia.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD2000000000000000000010 /* MobileLocalMedia.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -26,6 +27,7 @@
 		CD2000000000000000000007 /* ChannelDeck.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ChannelDeck.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		CD2000000000000000000008 /* MobileMultiviewSlot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ChannelDeckIOS/MobileMultiviewSlot.swift; sourceTree = "<group>"; };
 		CD2000000000000000000009 /* MobileM3UPlaylist.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ChannelDeckIOS/MobileM3UPlaylist.swift; sourceTree = "<group>"; };
+		CD2000000000000000000010 /* MobileLocalMedia.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Sources/ChannelDeckIOS/MobileLocalMedia.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,6 +59,7 @@
 				CD2000000000000000000004 /* MobileServices.swift */,
 				CD2000000000000000000008 /* MobileMultiviewSlot.swift */,
 				CD2000000000000000000009 /* MobileM3UPlaylist.swift */,
+				CD2000000000000000000010 /* MobileLocalMedia.swift */,
 				CD2000000000000000000005 /* MobileViews.swift */,
 			);
 			path = "";
@@ -152,6 +155,7 @@
 				CD1000000000000000000004 /* MobileServices.swift in Sources */,
 				CD1000000000000000000006 /* MobileMultiviewSlot.swift in Sources */,
 				CD1000000000000000000007 /* MobileM3UPlaylist.swift in Sources */,
+				CD1000000000000000000008 /* MobileLocalMedia.swift in Sources */,
 				CD1000000000000000000005 /* MobileViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -5,15 +5,15 @@ final class MobileChannelDeckTests: XCTestCase {
     func testMobileNavigationTabsExposeStableAdaptiveShellOrder() {
         XCTAssertEqual(
             MobileAppTab.allCases.map(\.title),
-            ["Home", "Browse", "Player", "Multiview", "Settings"]
+            ["Home", "Browse", "Player", "Multiview", "Library", "Settings"]
         )
         XCTAssertEqual(
             MobileAppTab.allCases.map(\.navigationTitle),
-            ["ChannelDeck", "Channels", "Player", "Multiview", "Settings"]
+            ["ChannelDeck", "Channels", "Player", "Multiview", "Library", "Settings"]
         )
         XCTAssertEqual(
             MobileAppTab.allCases.map(\.systemImage),
-            ["house", "rectangle.grid.1x2", "play.rectangle", "rectangle.grid.2x2", "gearshape"]
+            ["house", "rectangle.grid.1x2", "play.rectangle", "rectangle.grid.2x2", "tray.full", "gearshape"]
         )
     }
 
@@ -144,6 +144,62 @@ final class MobileChannelDeckTests: XCTestCase {
 
         XCTAssertEqual(store.epgPrograms, [])
         XCTAssertEqual(store.epgState, .unavailable)
+    }
+
+    func testMobileLocalMediaLibraryScansSupportedFiles() throws {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("channeldeck-mobile-library-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        try Data(repeating: 0x01, count: 64).write(to: directory.appendingPathComponent("news.ts"))
+        try Data(repeating: 0x02, count: 32).write(to: directory.appendingPathComponent("saved.m3u"))
+        try Data(repeating: 0x03, count: 16).write(to: directory.appendingPathComponent("notes.txt"))
+        try Data(repeating: 0x04, count: 8).write(to: directory.appendingPathComponent("ignored.json"))
+
+        let items = try MobileLocalMediaLibrary.scan(in: directory)
+        let summary = MobileLocalMediaBrowser.summary(for: items)
+
+        XCTAssertEqual(Set(items.map(\.name)), ["news.ts", "saved.m3u"])
+        XCTAssertEqual(summary.itemCount, 2)
+        XCTAssertEqual(summary.recordingCount, 1)
+        XCTAssertEqual(summary.playlistCount, 1)
+        XCTAssertEqual(summary.downloadCount, 0)
+        XCTAssertEqual(summary.byteCount, 96)
+    }
+
+    func testMobileLocalMediaBrowserFiltersSearchesAndSorts() {
+        let now = Date()
+        let items = [
+            mobileMediaItem(name: "sports.ts", kind: .recording, modifiedAt: now.addingTimeInterval(30), byteCount: 2_000),
+            mobileMediaItem(name: "saved-news.m3u", kind: .playlist, modifiedAt: now.addingTimeInterval(20), byteCount: 250),
+            mobileMediaItem(name: "news.ts", kind: .recording, modifiedAt: now.addingTimeInterval(10), byteCount: 6_000)
+        ]
+
+        let playlists = MobileLocalMediaBrowser.visibleItems(
+            from: items,
+            filter: .playlists,
+            query: "",
+            sortMode: .newest
+        )
+        let news = MobileLocalMediaBrowser.visibleItems(
+            from: items,
+            filter: .all,
+            query: "news",
+            sortMode: .name
+        )
+        let largest = MobileLocalMediaBrowser.visibleItems(
+            from: items,
+            filter: .all,
+            query: "",
+            sortMode: .largest
+        )
+
+        XCTAssertEqual(playlists.map(\.name), ["saved-news.m3u"])
+        XCTAssertEqual(news.map(\.name), ["news.ts", "saved-news.m3u"])
+        XCTAssertEqual(largest.map(\.name), ["news.ts", "sports.ts", "saved-news.m3u"])
     }
 
     @MainActor
@@ -282,5 +338,23 @@ final class MobileChannelDeckTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suiteName)!
         defaults.removePersistentDomain(forName: suiteName)
         return defaults
+    }
+
+    private func mobileMediaItem(
+        name: String,
+        kind: MobileLocalMediaKind,
+        modifiedAt: Date,
+        byteCount: Int64
+    ) -> MobileLocalMediaItem {
+        let url = URL(fileURLWithPath: "/tmp/\(name)")
+        return MobileLocalMediaItem(
+            id: url,
+            url: url,
+            name: name,
+            kind: kind,
+            createdAt: modifiedAt,
+            modifiedAt: modifiedAt,
+            byteCount: byteCount
+        )
     }
 }

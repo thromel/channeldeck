@@ -6,6 +6,7 @@ enum MobileAppTab: String, CaseIterable, Identifiable, Hashable {
     case browse
     case player
     case multiview
+    case library
     case settings
 
     var id: String { rawValue }
@@ -20,6 +21,8 @@ enum MobileAppTab: String, CaseIterable, Identifiable, Hashable {
             "Player"
         case .multiview:
             "Multiview"
+        case .library:
+            "Library"
         case .settings:
             "Settings"
         }
@@ -35,6 +38,8 @@ enum MobileAppTab: String, CaseIterable, Identifiable, Hashable {
             "Player"
         case .multiview:
             "Multiview"
+        case .library:
+            "Library"
         case .settings:
             "Settings"
         }
@@ -50,6 +55,8 @@ enum MobileAppTab: String, CaseIterable, Identifiable, Hashable {
             "play.rectangle"
         case .multiview:
             "rectangle.grid.2x2"
+        case .library:
+            "tray.full"
         case .settings:
             "gearshape"
         }
@@ -78,6 +85,7 @@ struct MobileRootView: View {
             if store.channels.isEmpty, store.loadState == .idle {
                 store.loadSamplePlaylist()
             }
+            store.refreshLocalMediaLibrary()
         }
     }
 }
@@ -139,6 +147,11 @@ struct MobileSplitRootView: View {
                         title: "Favorites",
                         value: "\(store.favoriteChannelIDs.count)",
                         systemImage: "star"
+                    )
+                    MobileSidebarMetricRow(
+                        title: "Library",
+                        value: "\(store.localMediaSummary.itemCount)",
+                        systemImage: "tray.full"
                     )
                     if let currentChannel = store.currentChannel {
                         MobileSidebarNowPlayingRow(channel: currentChannel)
@@ -205,6 +218,8 @@ struct MobileRootDestinationView: View {
                 MobilePlayerView(store: store)
             case .multiview:
                 MobileMultiviewView(store: store)
+            case .library:
+                MobileLocalLibraryView(store: store)
             case .settings:
                 MobileSettingsView(store: store)
             }
@@ -243,6 +258,8 @@ struct MobileSidebarTabRow: View {
             store.currentChannel == nil ? nil : "Live"
         case .multiview:
             store.activeMultiviewCount == 0 ? nil : "\(store.activeMultiviewCount)"
+        case .library:
+            store.localMediaItems.isEmpty ? nil : "\(store.localMediaItems.count)"
         case .settings:
             nil
         }
@@ -305,6 +322,7 @@ struct MobileHomeView: View {
                     MobileHomeMetricPill(title: "Favorites", value: store.favoriteChannelIDs.count, systemImage: "star.fill", tint: .yellow)
                     MobileHomeMetricPill(title: "Recent", value: store.recentChannels.count, systemImage: "clock.arrow.circlepath", tint: .blue)
                     MobileHomeMetricPill(title: "Channels", value: store.channels.count, systemImage: "tv.fill", tint: .green)
+                    MobileHomeMetricPill(title: "Library", value: store.localMediaSummary.itemCount, systemImage: "tray.full.fill", tint: .purple)
                 }
 
                 LazyVGrid(columns: actionColumns, spacing: 10) {
@@ -321,6 +339,10 @@ struct MobileHomeView: View {
                         selectedTab = .multiview
                     }
                     .disabled(store.channels.isEmpty)
+
+                    MobileHomeActionButton(title: "Library", systemImage: "tray.full") {
+                        selectedTab = .library
+                    }
 
                     MobileHomeActionButton(title: "Reload", systemImage: "arrow.clockwise") {
                         Task {
@@ -938,9 +960,7 @@ struct MobilePlayerView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 if let channel = store.currentChannel {
-                    MobileCurrentChannelPanel(channel: channel) {
-                        store.stopPlayback()
-                    }
+                    MobileCurrentChannelPanel(store: store, channel: channel)
                     MobileGuidePanel(store: store)
                 } else {
                     MobilePlayerPlaceholder()
@@ -971,8 +991,8 @@ struct MobilePlayerView: View {
 }
 
 struct MobileCurrentChannelPanel: View {
+    @ObservedObject var store: MobileIPTVStore
     let channel: MobileIPTVChannel
-    let stopAction: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -991,15 +1011,94 @@ struct MobileCurrentChannelPanel: View {
                 Spacer(minLength: 12)
             }
 
-            Button(role: .destructive, action: stopAction) {
-                Label("Stop Playback", systemImage: "stop.fill")
+            HStack(spacing: 10) {
+                Button {
+                    store.togglePrimaryRecording()
+                } label: {
+                    Label(
+                        store.primaryRecording?.isActive == true ? "Stop Recording" : "Record",
+                        systemImage: store.primaryRecording?.isActive == true ? "stop.circle.fill" : "record.circle"
+                    )
                     .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(store.primaryRecording?.isActive == true ? .red : .accentColor)
+
+                Button(role: .destructive) {
+                    store.stopPlayback()
+                } label: {
+                    Label("Stop Playback", systemImage: "stop.fill")
+                        .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.borderedProminent)
+
+            if let recording = store.primaryRecording {
+                MobileRecordingStatusView(recording: recording)
+            }
         }
         .padding()
         .background(Color.secondary.opacity(0.12))
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct MobileRecordingStatusView: View {
+    @ObservedObject var recording: MobileLocalStreamRecording
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbolName)
+                .foregroundStyle(tint)
+                .frame(width: 24, height: 24)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(recording.state.rawValue)
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(tint)
+                Text(recording.byteCountText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer(minLength: 8)
+
+            if let issue = recording.issue {
+                Text(issue)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .lineLimit(2)
+            }
+        }
+        .padding(10)
+        .background(Color.primary.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private var symbolName: String {
+        switch recording.state {
+        case .recording:
+            "record.circle.fill"
+        case .stopping:
+            "stop.circle"
+        case .stopped:
+            "checkmark.circle"
+        case .failed:
+            "exclamationmark.triangle"
+        }
+    }
+
+    private var tint: Color {
+        switch recording.state {
+        case .recording:
+            .red
+        case .stopping:
+            .orange
+        case .stopped:
+            .green
+        case .failed:
+            .red
+        }
     }
 }
 
@@ -1370,6 +1469,291 @@ struct MobileMultiviewChannelPickerRow: View {
             .controlSize(.small)
         }
         .padding(10)
+    }
+}
+
+struct MobileLocalLibraryView: View {
+    @ObservedObject var store: MobileIPTVStore
+    @State private var query = ""
+    @State private var filter: MobileLocalMediaFilter = .all
+    @State private var sortMode: MobileLocalMediaSortMode = .newest
+    @State private var deleteCandidate: MobileLocalMediaItem?
+
+    private var summary: MobileLocalMediaSummary {
+        store.localMediaSummary
+    }
+
+    private var visibleItems: [MobileLocalMediaItem] {
+        MobileLocalMediaBrowser.visibleItems(
+            from: store.localMediaItems,
+            filter: filter,
+            query: query,
+            sortMode: sortMode
+        )
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                MobileLocalLibraryHeader(summary: summary) {
+                    store.refreshLocalMediaLibrary()
+                }
+
+                MobileLocalLibraryControls(
+                    summary: summary,
+                    query: $query,
+                    filter: $filter,
+                    sortMode: $sortMode
+                )
+
+                if let issue = store.localMediaIssue {
+                    Label(issue, systemImage: "exclamationmark.triangle")
+                        .font(.subheadline)
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color.orange.opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                }
+
+                if store.localMediaItems.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Local Files", systemImage: "tray")
+                    } description: {
+                        Text("Recordings and saved playlists appear here.")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 48)
+                } else if visibleItems.isEmpty {
+                    ContentUnavailableView {
+                        Label("No Matches", systemImage: "line.3.horizontal.decrease.circle")
+                    } description: {
+                        Text("Adjust the search or media type filter.")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 48)
+                } else {
+                    LazyVStack(spacing: 10) {
+                        ForEach(visibleItems) { item in
+                            MobileLocalMediaRow(item: item) {
+                                deleteCandidate = item
+                            }
+                        }
+                    }
+                }
+            }
+            .frame(maxWidth: 960, alignment: .leading)
+            .padding()
+        }
+        .refreshable {
+            store.refreshLocalMediaLibrary()
+        }
+        .task {
+            store.refreshLocalMediaLibrary()
+        }
+        .confirmationDialog(
+            "Delete Local File?",
+            isPresented: Binding(
+                get: { deleteCandidate != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        deleteCandidate = nil
+                    }
+                }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete File", role: .destructive) {
+                if let deleteCandidate {
+                    store.deleteLocalMedia(deleteCandidate)
+                    self.deleteCandidate = nil
+                }
+            }
+
+            Button("Cancel", role: .cancel) {
+                deleteCandidate = nil
+            }
+        } message: {
+            if let deleteCandidate {
+                Text("This removes \(deleteCandidate.name) from local storage.")
+            }
+        }
+    }
+}
+
+struct MobileLocalLibraryHeader: View {
+    let summary: MobileLocalMediaSummary
+    let refresh: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "tray.full")
+                .font(.title2.weight(.semibold))
+                .foregroundStyle(.purple)
+                .frame(width: 44, height: 44)
+                .background(Color.purple.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Local Library")
+                    .font(.title3.weight(.bold))
+                    .lineLimit(1)
+                HStack(spacing: 8) {
+                    Text("\(summary.itemCount) files")
+                    Text(summary.byteCountText)
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+
+            Spacer(minLength: 12)
+
+            Button(action: refresh) {
+                Label("Refresh", systemImage: "arrow.clockwise")
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.bordered)
+        }
+        .padding()
+        .background(Color.secondary.opacity(0.12))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct MobileLocalLibraryControls: View {
+    let summary: MobileLocalMediaSummary
+    @Binding var query: String
+    @Binding var filter: MobileLocalMediaFilter
+    @Binding var sortMode: MobileLocalMediaSortMode
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 140), spacing: 8)], spacing: 8) {
+                MobileLibraryStatPill(title: "Recordings", value: summary.recordingCount, systemImage: "video", tint: .red)
+                MobileLibraryStatPill(title: "Playlists", value: summary.playlistCount, systemImage: "music.note.list", tint: .blue)
+                MobileLibraryStatPill(title: "Downloads", value: summary.downloadCount, systemImage: "doc", tint: .secondary)
+            }
+
+            TextField("Search local files", text: $query)
+                .textFieldStyle(.roundedBorder)
+                .channelDeckPlainInput()
+
+            Picker("Media Type", selection: $filter) {
+                ForEach(MobileLocalMediaFilter.allCases) { filter in
+                    Text(filter.title).tag(filter)
+                }
+            }
+            .pickerStyle(.segmented)
+
+            Menu {
+                Picker("Sort", selection: $sortMode) {
+                    ForEach(MobileLocalMediaSortMode.allCases) { mode in
+                        Text(mode.title).tag(mode)
+                    }
+                }
+            } label: {
+                Label(sortMode.title, systemImage: "arrow.up.arrow.down")
+            }
+            .buttonStyle(.bordered)
+        }
+    }
+}
+
+struct MobileLibraryStatPill: View {
+    let title: String
+    let value: Int
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        Label {
+            Text("\(title) \(value)")
+                .monospacedDigit()
+        } icon: {
+            Image(systemName: systemImage)
+                .foregroundStyle(tint)
+        }
+        .font(.caption.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color.secondary.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct MobileLocalMediaRow: View {
+    let item: MobileLocalMediaItem
+    let delete: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: item.kind.symbolName)
+                .font(.headline.weight(.semibold))
+                .foregroundStyle(item.kind.tint)
+                .frame(width: 40, height: 40)
+                .background(item.kind.tint.opacity(0.12))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text(item.name)
+                    .font(.subheadline.weight(.semibold))
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+
+                HStack(spacing: 8) {
+                    Label(item.kind.rawValue, systemImage: "tag")
+                    Text(item.byteCountText)
+                    Text(item.modifiedAt.formatted(date: .abbreviated, time: .shortened))
+                }
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+            }
+
+            Spacer(minLength: 8)
+
+            ShareLink(item: item.url) {
+                Label("Share", systemImage: "square.and.arrow.up")
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+
+            Button(role: .destructive, action: delete) {
+                Label("Delete", systemImage: "trash")
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+        }
+        .padding(12)
+        .background(Color.secondary.opacity(0.1))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private extension MobileLocalMediaKind {
+    var symbolName: String {
+        switch self {
+        case .recording:
+            "video"
+        case .playlist:
+            "music.note.list"
+        case .download:
+            "doc"
+        }
+    }
+
+    var tint: Color {
+        switch self {
+        case .recording:
+            .red
+        case .playlist:
+            .blue
+        case .download:
+            .secondary
+        }
     }
 }
 
