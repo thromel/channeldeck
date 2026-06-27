@@ -14,6 +14,8 @@ final class IPTVStore: ObservableObject {
     @Published private(set) var epgState: EPGLoadState = .idle
     @Published private(set) var playbackDiagnostics: PlaybackDiagnostics = .idle
     @Published private(set) var primaryRecording: LocalStreamRecording?
+    @Published private(set) var localMediaItems: [LocalMediaItem] = []
+    @Published private(set) var localMediaIssue: String?
     @Published private(set) var state: IPTVLoadState = .idle
     @Published private(set) var multiPlaybackSlots: [MultiPlaybackSlot]
     @Published private(set) var hasSavedMultiPlaybackLayout: Bool
@@ -21,6 +23,7 @@ final class IPTVStore: ObservableObject {
     @Published var isMultiPlaybackMode = false
     @Published var isChannelBrowserVisible = true
     @Published var isAccountInspectorVisible = false
+    @Published var isLocalLibraryVisible = false
     @Published var multiPlaybackSlotCount: Int {
         didSet {
             defaults.set(multiPlaybackSlotCount, forKey: Keys.multiPlaybackSlotCount)
@@ -216,6 +219,7 @@ final class IPTVStore: ObservableObject {
     func togglePrimaryRecording(account: IPTVCredentials) {
         if primaryRecording?.isActive == true {
             primaryRecording?.stop()
+            refreshLocalMediaLibrary()
             return
         }
 
@@ -226,6 +230,7 @@ final class IPTVStore: ObservableObject {
 
         primaryRecording = makeRecording(channel: currentChannel, url: url)
         primaryRecording?.start()
+        refreshLocalMediaLibrary()
     }
 
     func revealPrimaryRecording() {
@@ -282,6 +287,7 @@ final class IPTVStore: ObservableObject {
     func toggleRecording(for slot: MultiPlaybackSlot) {
         if slot.recording?.isActive == true {
             slot.recording?.stop()
+            refreshLocalMediaLibrary()
             return
         }
 
@@ -296,6 +302,7 @@ final class IPTVStore: ObservableObject {
 
         slot.setRecording(recording)
         recording.start()
+        refreshLocalMediaLibrary()
     }
 
     func revealRecording(for slot: MultiPlaybackSlot) {
@@ -468,7 +475,51 @@ final class IPTVStore: ObservableObject {
     }
 
     func saveM3UPlaylist(account: IPTVCredentials) {
-        M3UPlaylistExporter.save(channels: channels, account: account)
+        if M3UPlaylistExporter.save(channels: channels, account: account) != nil {
+            refreshLocalMediaLibrary()
+        }
+    }
+
+    func showLocalLibrary() {
+        isAccountInspectorVisible = false
+        refreshLocalMediaLibrary()
+        isLocalLibraryVisible = true
+    }
+
+    func refreshLocalMediaLibrary() {
+        do {
+            localMediaItems = try LocalMediaLibrary.scan()
+            localMediaIssue = nil
+        } catch {
+            localMediaIssue = error.localizedDescription
+        }
+    }
+
+    func openLocalMediaFolder() {
+        do {
+            let directory = try LocalMediaLibrary.ensureDirectory()
+            WorkspaceOpener.open(directory)
+            localMediaIssue = nil
+        } catch {
+            localMediaIssue = error.localizedDescription
+        }
+    }
+
+    func openLocalMedia(_ item: LocalMediaItem) {
+        WorkspaceOpener.open(item.url)
+    }
+
+    func revealLocalMedia(_ item: LocalMediaItem) {
+        WorkspaceOpener.reveal(item.url)
+    }
+
+    func deleteLocalMedia(_ item: LocalMediaItem) {
+        do {
+            try LocalMediaLibrary.remove(item)
+            refreshLocalMediaLibrary()
+        } catch {
+            localMediaIssue = error.localizedDescription
+        }
     }
 
     private func playAdjacent(offset: Int, account: IPTVCredentials) {

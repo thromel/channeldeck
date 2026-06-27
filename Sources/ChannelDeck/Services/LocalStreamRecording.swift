@@ -161,9 +161,7 @@ final class LocalStreamRecording: ObservableObject, Identifiable {
     }
 
     static func defaultOutputURL(channel: IPTVChannel, streamURL: URL) throws -> URL {
-        let movies = FileManager.default.urls(for: .moviesDirectory, in: .userDomainMask).first
-            ?? FileManager.default.homeDirectoryForCurrentUser
-        let directory = movies.appendingPathComponent("ChannelDeck", isDirectory: true)
+        let directory = try LocalMediaLibrary.ensureDirectory()
         let timestamp = DateFormatter.recordingTimestamp.string(from: Date())
         let filename = "\(channel.name.safeRecordingFilename)-\(channel.id)-\(timestamp).ts"
         return directory.appendingPathComponent(filename)

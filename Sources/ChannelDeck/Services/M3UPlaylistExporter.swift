@@ -4,9 +4,10 @@ import UniformTypeIdentifiers
 
 @MainActor
 enum M3UPlaylistExporter {
-    static func save(channels: [IPTVChannel], account: IPTVCredentials) {
+    @discardableResult
+    static func save(channels: [IPTVChannel], account: IPTVCredentials) -> URL? {
         guard !channels.isEmpty else {
-            return
+            return nil
         }
 
         let panel = NSSavePanel()
@@ -14,18 +15,21 @@ enum M3UPlaylistExporter {
         panel.nameFieldStringValue = "ChannelDeck-\(DateFormatter.playlistTimestamp.string(from: Date())).m3u"
         panel.allowedContentTypes = [UTType(filenameExtension: "m3u") ?? .plainText]
         panel.canCreateDirectories = true
+        panel.directoryURL = try? LocalMediaLibrary.ensureDirectory()
 
         guard panel.runModal() == .OK,
               let url = panel.url else {
-            return
+            return nil
         }
 
         do {
             let playlist = makePlaylist(channels: channels, account: account)
             try playlist.write(to: url, atomically: true, encoding: .utf8)
             WorkspaceOpener.reveal(url)
+            return url
         } catch {
             NSSound.beep()
+            return nil
         }
     }
 

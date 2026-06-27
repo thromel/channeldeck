@@ -29,11 +29,12 @@ Website: https://thromel.github.io/channeldeck/
 - 2-4 channel multiview playback with independent volume and mute per tile.
 - Saved multiview layouts.
 - Local-only stream recording to `~/Movies/ChannelDeck` for authorized streams.
+- Local library for opening, revealing, refreshing, and deleting recordings and saved playlists.
 - Playback diagnostics with credential-safe copyable status reports.
 - Collapsible channel browser.
 - Optional account inspector panel.
 - HLS `.m3u8` and MPEG-TS `.ts` stream URL modes.
-- Local M3U playlist export.
+- Local M3U playlist export, defaulting to the ChannelDeck local library.
 - Copy stream URL fallback.
 - Open stream URL fallback for external players or browser handoff.
 - Password storage in the macOS Keychain.
@@ -78,7 +79,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 - Real recorded demo for the website and README.
 - Developer ID signing and notarization for smoother macOS installs.
 - Full EPG grid and richer schedule browsing.
-- More library management controls for saved and recently played channels.
+- More library management controls for saved channels, recording metadata, and history.
 - VOD and series support for compatible provider APIs.
 - Picture-in-picture.
 - M3U playlist import where legally supported.
@@ -96,6 +97,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 | `Option-Command-M` | Show multiview |
 | `Command-Shift-R` | Start or stop recording the current stream |
 | `Option-Command-S` | Save local M3U playlist |
+| `Option-Command-J` | Show local recordings and saved playlists |
 | `Option-Command-C` | Copy playback diagnostics |
 | `Command-.` | Stop playback |
 | `Control-Command-F` | Enter or exit full-screen player |

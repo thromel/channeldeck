@@ -36,6 +36,10 @@ struct ContentView: View {
                 .environmentObject(iptvStore)
                 .inspectorColumnWidth(min: 300, ideal: 340, max: 420)
         }
+        .sheet(isPresented: $iptvStore.isLocalLibraryVisible) {
+            RecordingsLibraryView()
+                .environmentObject(iptvStore)
+        }
         .toolbar {
             ToolbarItemGroup {
                 Button {
@@ -93,6 +97,13 @@ struct ContentView: View {
                 }
                 .help("Save a local M3U playlist")
                 .disabled(iptvStore.channels.isEmpty)
+
+                Button {
+                    iptvStore.showLocalLibrary()
+                } label: {
+                    Label("Local Library", systemImage: "tray.full")
+                }
+                .help("Show local recordings and saved playlists")
 
                 Button {
                     iptvStore.toggleAccountInspector()

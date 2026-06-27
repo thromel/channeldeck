@@ -313,6 +313,11 @@ struct ChannelDeckApp: App {
                 .keyboardShortcut("s", modifiers: [.command, .option])
                 .disabled(iptvStore.channels.isEmpty)
 
+                Button("Show Local Library") {
+                    iptvStore.showLocalLibrary()
+                }
+                .keyboardShortcut("j", modifiers: [.command, .option])
+
                 Divider()
 
                 Button(iptvStore.isChannelBrowserVisible ? "Collapse Channels" : "Show Channels") {
