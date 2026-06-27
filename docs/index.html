@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="ChannelDeck is a native macOS IPTV player for Xtream-style accounts.">
+    <meta property="og:title" content="ChannelDeck">
+    <meta property="og:description" content="A native macOS IPTV player for Xtream-style accounts.">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="assets/channeldeck-icon.svg">
+    <title>ChannelDeck</title>
+    <link rel="icon" href="assets/channeldeck-icon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="ChannelDeck home">
+        <img src="assets/channeldeck-icon.svg" alt="" width="34" height="34">
+        <span>ChannelDeck</span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="https://github.com/thromel/channeldeck/releases/latest">Download</a>
+        <a href="https://github.com/thromel/channeldeck">GitHub</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-copy">
+          <img class="hero-icon" src="assets/channeldeck-icon.svg" alt="" width="116" height="116">
+          <p class="eyebrow">Native IPTV player for Apple platforms</p>
+          <h1>ChannelDeck</h1>
+          <p class="lede">
+            A focused macOS IPTV player for Xtream-style accounts, with live categories,
+            fast channel browsing, full-screen playback, and local credential storage.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="https://github.com/thromel/channeldeck/releases/latest">Download macOS build</a>
+            <a class="button secondary" href="https://github.com/thromel/channeldeck">View source</a>
+          </div>
+        </div>
+
+        <aside class="release-panel" aria-label="Release status">
+          <div>
+            <span class="label">Current release</span>
+            <strong>v0.1.0 for macOS</strong>
+          </div>
+          <div>
+            <span class="label">Coming next</span>
+            <strong>iOS and iPadOS support</strong>
+          </div>
+          <div>
+            <span class="label">Demo</span>
+            <strong>Real recording planned</strong>
+          </div>
+        </aside>
+      </section>
+
+      <section id="features" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Available now</p>
+          <h2>Built for live IPTV playback</h2>
+        </div>
+        <div class="feature-grid">
+          <article>
+            <h3>Xtream-style login</h3>
+            <p>Connect with server URL, ID, password, and the provider's player API.</p>
+          </article>
+          <article>
+            <h3>Live categories</h3>
+            <p>Loads live categories and channel lists, with search and category filtering.</p>
+          </article>
+          <article>
+            <h3>Secure local storage</h3>
+            <p>Stores passwords in the macOS Keychain and keeps public builds credential-free.</p>
+          </article>
+          <article>
+            <h3>Playback controls</h3>
+            <p>Supports play, pause, stop, previous/next channel, copy URL, and open URL fallback.</p>
+          </article>
+          <article>
+            <h3>Full-screen player</h3>
+            <p>Includes a theater-style full-screen mode with Escape to exit.</p>
+          </article>
+          <article>
+            <h3>Keyboard first</h3>
+            <p>Shortcuts cover reload, playback, channel navigation, full screen, and panel toggles.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="roadmap" class="section roadmap">
+        <div class="section-heading">
+          <p class="eyebrow">Planned</p>
+          <h2>Roadmap</h2>
+        </div>
+        <ul class="roadmap-list">
+          <li>iOS and iPadOS apps with shared account and playback model.</li>
+          <li>Real recorded demo for the website and README.</li>
+          <li>Developer ID signing, notarization, and a cleaner macOS installer flow.</li>
+          <li>EPG guide support with current and upcoming program metadata.</li>
+          <li>Favorites, pinned channels, and persisted recently played history.</li>
+          <li>VOD and series support from compatible provider APIs.</li>
+          <li>Picture-in-picture and improved external player handoff.</li>
+          <li>Import and export for M3U playlists where legally supported.</li>
+        </ul>
+      </section>
+
+      <section class="section note">
+        <h2>Content and credentials</h2>
+        <p>
+          ChannelDeck is a client only. It does not include IPTV content, subscriptions,
+          provider credentials, playlists, or authorization to access streams.
+        </p>
+      </section>
+    </main>
+
+    <footer>
+      <span>ChannelDeck</span>
+      <a href="https://github.com/thromel/channeldeck/blob/main/LICENSE">MIT License</a>
+      <a href="https://github.com/thromel/channeldeck/blob/main/SECURITY.md">Security</a>
+    </footer>
+  </body>
+</html>
