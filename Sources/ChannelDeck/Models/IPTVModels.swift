@@ -29,6 +29,58 @@ enum StreamFormat: String, CaseIterable, Identifiable {
     }
 }
 
+enum ChannelSourceFilter: String, CaseIterable, Hashable, Identifiable {
+    case all
+    case account
+    case direct
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all:
+            "All"
+        case .account:
+            "Account"
+        case .direct:
+            "Direct"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .all:
+            "line.3.horizontal.decrease.circle"
+        case .account:
+            "person.crop.circle"
+        case .direct:
+            "link"
+        }
+    }
+}
+
+enum ChannelSortMode: String, CaseIterable, Hashable, Identifiable {
+    case smart
+    case name
+    case recentlyAdded
+    case streamID
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .smart:
+            "Smart"
+        case .name:
+            "Name"
+        case .recentlyAdded:
+            "Recently Added"
+        case .streamID:
+            "Stream ID"
+        }
+    }
+}
+
 struct AccountSummary: Equatable {
     let status: String
     let expiresAt: Date?
@@ -134,6 +186,21 @@ struct IPTVChannel: Identifiable, Hashable, Decodable {
         let password = account.password.pathEncoded
 
         return URL(string: "\(server)/live/\(username)/\(password)/\(id).\(account.streamFormat.rawValue)")
+    }
+
+    var sourceLabel: String {
+        guard let directSource else {
+            return "Stream \(id)"
+        }
+
+        switch directSource.pathExtension.lowercased() {
+        case "m3u8":
+            return "Direct HLS"
+        case "ts":
+            return "Direct TS"
+        default:
+            return "Direct Stream"
+        }
     }
 
     private enum CodingKeys: String, CodingKey {

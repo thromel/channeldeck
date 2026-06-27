@@ -27,6 +27,16 @@ final class IPTVStore: ObservableObject {
     @Published var isLocalLibraryVisible = false
     @Published var isQuickSwitcherVisible = false
     @Published var isGuidePanelVisible = false
+    @Published var channelSourceFilter: ChannelSourceFilter = .all {
+        didSet {
+            defaults.set(channelSourceFilter.rawValue, forKey: Keys.channelSourceFilter)
+        }
+    }
+    @Published var channelSortMode: ChannelSortMode = .smart {
+        didSet {
+            defaults.set(channelSortMode.rawValue, forKey: Keys.channelSortMode)
+        }
+    }
     @Published var multiPlaybackSlotCount: Int {
         didSet {
             defaults.set(multiPlaybackSlotCount, forKey: Keys.multiPlaybackSlotCount)
@@ -52,6 +62,8 @@ final class IPTVStore: ObservableObject {
     init(service: IPTVService = IPTVService(), defaults: UserDefaults = .standard) {
         self.service = service
         self.defaults = defaults
+        channelSourceFilter = ChannelSourceFilter(rawValue: defaults.string(forKey: Keys.channelSourceFilter) ?? "") ?? .all
+        channelSortMode = ChannelSortMode(rawValue: defaults.string(forKey: Keys.channelSortMode) ?? "") ?? .smart
         multiPlaybackSlots = (0..<4).map { MultiPlaybackSlot(id: $0) }
         multiPlaybackSlotCount = {
             let savedCount = defaults.integer(forKey: Keys.multiPlaybackSlotCount)
@@ -89,10 +101,38 @@ final class IPTVStore: ObservableObject {
             categoryChannels = channels.filter { $0.categoryID == selectedCategoryID }
         }
 
-        return categoryChannels.filter { channel in
-            let searchMatches = query.isEmpty || channel.name.lowercased().contains(query)
-            return searchMatches
+        let sourceChannels = categoryChannels.filter { channel in
+            switch channelSourceFilter {
+            case .all:
+                true
+            case .account:
+                channel.directSource == nil
+            case .direct:
+                channel.directSource != nil
+            }
         }
+
+        let searchChannels = sourceChannels.filter { channel in
+            query.isEmpty
+                || channel.name.lowercased().contains(query)
+                || categoryName(for: channel.categoryID).lowercased().contains(query)
+                || channel.sourceLabel.lowercased().contains(query)
+                || "\(channel.id)".contains(query)
+        }
+
+        return sortedChannels(searchChannels)
+    }
+
+    var hasChannelViewFilters: Bool {
+        channelSourceFilter != .all
+            || channelSortMode != .smart
+            || !searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    func resetChannelViewFilters() {
+        channelSourceFilter = .all
+        channelSortMode = .smart
+        searchText = ""
     }
 
     var visibleCategories: [IPTVCategory] {
@@ -868,12 +908,71 @@ final class IPTVStore: ObservableObject {
     private func persistRecentChannels() {
         defaults.set(recentChannelIDs, forKey: Keys.recentChannelIDs)
     }
+
+    private func sortedChannels(_ channels: [IPTVChannel]) -> [IPTVChannel] {
+        switch channelSortMode {
+        case .smart:
+            if selectedCategoryID == IPTVCategory.pinnedID || selectedCategoryID == IPTVCategory.recentID {
+                return channels
+            }
+
+            return channels.sorted { lhs, rhs in
+                let lhsPriority = smartPriority(for: lhs)
+                let rhsPriority = smartPriority(for: rhs)
+                if lhsPriority != rhsPriority {
+                    return lhsPriority > rhsPriority
+                }
+
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+        case .name:
+            return channels.sorted { lhs, rhs in
+                lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+        case .recentlyAdded:
+            return channels.sorted { lhs, rhs in
+                let lhsAdded = lhs.added ?? .distantPast
+                let rhsAdded = rhs.added ?? .distantPast
+                if lhsAdded != rhsAdded {
+                    return lhsAdded > rhsAdded
+                }
+
+                return lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
+            }
+        case .streamID:
+            return channels.sorted { lhs, rhs in
+                lhs.id < rhs.id
+            }
+        }
+    }
+
+    private func smartPriority(for channel: IPTVChannel) -> Int {
+        var score = 0
+        if currentChannel?.id == channel.id {
+            score += 100
+        }
+        if pinnedChannelIDs.contains(channel.id) {
+            score += 30
+        }
+        if favoriteChannelIDs.contains(channel.id) {
+            score += 20
+        }
+        if recentChannelIDs.contains(channel.id) {
+            score += 10
+        }
+        if channel.directSource != nil {
+            score += 2
+        }
+        return score
+    }
 }
 
 private enum Keys {
     static let favoriteChannelIDs = "player.favoriteChannelIDs"
     static let pinnedChannelIDs = "player.pinnedChannelIDs"
     static let recentChannelIDs = "player.recentChannelIDs"
+    static let channelSourceFilter = "player.channelSourceFilter"
+    static let channelSortMode = "player.channelSortMode"
     static let multiPlaybackSlotCount = "player.multiPlaybackSlotCount"
     static let multiPlaybackLayout = "player.multiPlaybackLayout"
 }

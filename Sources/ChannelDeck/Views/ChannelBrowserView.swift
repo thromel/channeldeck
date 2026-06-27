@@ -65,9 +65,68 @@ struct ChannelBrowserView: View {
                     .help("Clear pinned channels")
                 }
             }
+
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 8) {
+                    sourceFilterPicker
+                    sortMenu
+                    resetFiltersButton
+                    Spacer(minLength: 0)
+                }
+
+                VStack(alignment: .leading, spacing: 8) {
+                    sourceFilterPicker
+                    HStack(spacing: 8) {
+                        sortMenu
+                        resetFiltersButton
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 12)
+    }
+
+    private var sourceFilterPicker: some View {
+        Picker("Source", selection: $iptvStore.channelSourceFilter) {
+            ForEach(ChannelSourceFilter.allCases) { filter in
+                Label(filter.title, systemImage: filter.systemImage)
+                    .tag(filter)
+            }
+        }
+        .pickerStyle(.segmented)
+        .labelsHidden()
+        .frame(width: 236)
+        .help("Filter channels by source")
+    }
+
+    private var sortMenu: some View {
+        Menu {
+            Picker("Sort", selection: $iptvStore.channelSortMode) {
+                ForEach(ChannelSortMode.allCases) { mode in
+                    Text(mode.title)
+                        .tag(mode)
+                }
+            }
+        } label: {
+            Label(iptvStore.channelSortMode.title, systemImage: "arrow.up.arrow.down")
+        }
+        .help("Sort visible channels")
+    }
+
+    @ViewBuilder
+    private var resetFiltersButton: some View {
+        if iptvStore.hasChannelViewFilters {
+            Button {
+                iptvStore.resetChannelViewFilters()
+            } label: {
+                Label("Reset", systemImage: "arrow.counterclockwise")
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .help("Reset browser filters")
+        }
     }
 
     @ViewBuilder
@@ -336,7 +395,7 @@ private struct ChannelRow: View {
                     Text(categoryName)
                         .lineLimit(1)
 
-                    Text("Stream \(channel.id)")
+                    Text(channel.sourceLabel)
                         .lineLimit(1)
                 }
                 .font(.caption)

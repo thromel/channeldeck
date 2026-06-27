@@ -250,7 +250,7 @@ private struct QuickSwitcherRow: View {
 
                 HStack(spacing: 8) {
                     Text(categoryName)
-                    Text("Stream \(channel.id)")
+                    Text(channel.sourceLabel)
 
                     if isPinned {
                         Label("Pinned", systemImage: "pin.fill")

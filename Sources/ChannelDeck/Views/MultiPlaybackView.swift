@@ -111,7 +111,7 @@ private struct MultiPlaybackTile: View {
                         .font(.caption.weight(.semibold))
                         .lineLimit(1)
 
-                    Text(slot.channel.map { "Stream \($0.id)" } ?? "Add a channel from the browser")
+                    Text(slot.channel?.sourceLabel ?? "Add a channel from the browser")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
                         .lineLimit(1)

@@ -24,6 +24,7 @@ Website: https://thromel.github.io/channeldeck/
 - Live category loading and live channel loading.
 - Home dashboard with pinned, favorite, and recent channel shelves.
 - Channel search and category filtering.
+- Channel browser source filters and sort modes.
 - Command-K quick switcher for fast channel lookup, playback, multiview, pinning, and favorites.
 - Persistent pinned channels with a dedicated Pinned category.
 - Recently played category that persists across launches.

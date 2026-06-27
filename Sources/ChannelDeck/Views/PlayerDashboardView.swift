@@ -282,7 +282,7 @@ private struct DashboardChannelTile: View {
                             .foregroundStyle(.primary)
                             .lineLimit(1)
 
-                        Text("Stream \(channel.id)")
+                        Text(channel.sourceLabel)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .lineLimit(1)
