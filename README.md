@@ -26,10 +26,14 @@ Website: https://thromel.github.io/channeldeck/
 - Short EPG guide loading for the playing channel, with Now/Next display when provider data is available.
 - Native AVKit playback.
 - Full-screen theater mode.
+- 2-4 channel multiview playback with independent volume and mute per tile.
+- Saved multiview layouts.
+- Local-only stream recording to `~/Movies/ChannelDeck` for authorized streams.
 - Playback diagnostics with credential-safe copyable status reports.
 - Collapsible channel browser.
 - Optional account inspector panel.
 - HLS `.m3u8` and MPEG-TS `.ts` stream URL modes.
+- Local M3U playlist export.
 - Copy stream URL fallback.
 - Open stream URL fallback for external players or browser handoff.
 - Password storage in the macOS Keychain.
@@ -64,6 +68,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 - Passwords are stored in the macOS Keychain.
 - Some IPTV provider servers use HTTP, so the local app bundle allows HTTP network/media loads.
 - The app currently focuses on live TV. VOD/series support can be added through the same API.
+- Local recordings and M3U exports are for streams you are authorized to access. M3U files contain playable stream URLs.
 - Public builds do not ship provider server URLs, usernames, passwords, playlists, or stream content.
 
 ## Planned Features
@@ -76,7 +81,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 - More library management controls for saved and recently played channels.
 - VOD and series support for compatible provider APIs.
 - Picture-in-picture.
-- M3U playlist import and export where legally supported.
+- M3U playlist import where legally supported.
 
 ## Keyboard Shortcuts
 
@@ -88,6 +93,9 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 | `Command-]` | Next channel |
 | `Command-D` | Add or remove the current channel from favorites |
 | `Command-Shift-D` | Pin or unpin the current channel |
+| `Option-Command-M` | Show multiview |
+| `Command-Shift-R` | Start or stop recording the current stream |
+| `Option-Command-S` | Save local M3U playlist |
 | `Option-Command-C` | Copy playback diagnostics |
 | `Command-.` | Stop playback |
 | `Control-Command-F` | Enter or exit full-screen player |

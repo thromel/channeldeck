@@ -87,6 +87,9 @@ struct ChannelBrowserView: View {
                         isPlaying: iptvStore.currentChannel?.id == channel.id,
                         isPinned: iptvStore.isPinned(channel),
                         isFavorite: iptvStore.isFavorite(channel),
+                        onMultiPlayback: {
+                            iptvStore.playInMultiPlayback(channel, account: accountStore.credentials)
+                        },
                         onPinToggle: {
                             iptvStore.togglePin(channel)
                         },
@@ -102,6 +105,10 @@ struct ChannelBrowserView: View {
                     .contextMenu {
                         Button("Play") {
                             iptvStore.play(channel, account: accountStore.credentials)
+                        }
+
+                        Button("Add to Multiview") {
+                            iptvStore.playInMultiPlayback(channel, account: accountStore.credentials)
                         }
 
                         if let url = channel.streamURL(account: accountStore.credentials) {
@@ -304,6 +311,7 @@ private struct ChannelRow: View {
     let isPlaying: Bool
     let isPinned: Bool
     let isFavorite: Bool
+    let onMultiPlayback: () -> Void
     let onPinToggle: () -> Void
     let onFavoriteToggle: () -> Void
 
@@ -336,6 +344,17 @@ private struct ChannelRow: View {
             }
 
             Spacer(minLength: 0)
+
+            Button {
+                onMultiPlayback()
+            } label: {
+                Image(systemName: "rectangle.grid.2x2")
+                    .font(.caption)
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.borderless)
+            .help("Add to multiview")
 
             Button {
                 onPinToggle()

@@ -6,11 +6,17 @@ struct PlayerDashboardView: View {
     @EnvironmentObject private var iptvStore: IPTVStore
 
     var body: some View {
-        VStack(spacing: 0) {
-            VideoStage()
-            PlayerFooter()
+        Group {
+            if iptvStore.isMultiPlaybackMode {
+                MultiPlaybackView()
+            } else {
+                VStack(spacing: 0) {
+                    VideoStage()
+                    PlayerFooter()
+                }
+                .navigationTitle(iptvStore.currentChannel?.name ?? "ChannelDeck")
+            }
         }
-        .navigationTitle(iptvStore.currentChannel?.name ?? "ChannelDeck")
     }
 }
 
@@ -149,6 +155,13 @@ private struct PlayerFooter: View {
                     }
 
                     Button {
+                        iptvStore.togglePrimaryRecording(account: accountStore.credentials)
+                    } label: {
+                        Label(iptvStore.primaryRecording?.isActive == true ? "Stop Recording" : "Record", systemImage: iptvStore.primaryRecording?.isActive == true ? "stop.circle.fill" : "record.circle")
+                    }
+                    .help(iptvStore.primaryRecording?.isActive == true ? "Stop local recording" : "Record this stream locally")
+
+                    Button {
                         PasteboardWriter.copy(url.absoluteString)
                     } label: {
                         Label("Copy URL", systemImage: "doc.on.doc")
@@ -173,6 +186,11 @@ private struct PlayerFooter: View {
             if iptvStore.currentChannel != nil {
                 GuideStrip()
                 PlaybackDiagnosticsStrip()
+                if let recording = iptvStore.primaryRecording {
+                    RecordingStatusView(recording: recording) {
+                        iptvStore.revealPrimaryRecording()
+                    }
+                }
             }
         }
         .padding(.horizontal, 16)

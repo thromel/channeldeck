@@ -256,6 +256,12 @@ struct ChannelDeckApp: App {
                 .keyboardShortcut("c", modifiers: [.command, .option])
                 .disabled(iptvStore.currentChannel == nil)
 
+                Button(iptvStore.primaryRecording?.isActive == true ? "Stop Recording Current Stream" : "Record Current Stream") {
+                    iptvStore.togglePrimaryRecording(account: accountStore.credentials)
+                }
+                .keyboardShortcut("r", modifiers: [.command, .shift])
+                .disabled(iptvStore.currentChannel == nil)
+
                 Divider()
 
                 Button(iptvStore.isTheaterMode ? "Exit Full Screen Player" : "Full Screen Player") {
@@ -277,6 +283,38 @@ struct ChannelDeckApp: App {
             }
 
             CommandMenu("Channels") {
+                Button("Show Multiview") {
+                    iptvStore.isTheaterMode = false
+                    iptvStore.isMultiPlaybackMode = true
+                }
+                .keyboardShortcut("m", modifiers: [.command, .option])
+                .disabled(iptvStore.channels.isEmpty)
+
+                Button("Save Multiview Layout") {
+                    iptvStore.saveMultiPlaybackLayout()
+                }
+                .disabled(iptvStore.activeMultiPlaybackCount == 0)
+
+                Button("Restore Multiview Layout") {
+                    iptvStore.restoreMultiPlaybackLayout(account: accountStore.credentials)
+                }
+                .disabled(!iptvStore.hasSavedMultiPlaybackLayout || iptvStore.channels.isEmpty)
+
+                Button("Clear Multiview") {
+                    iptvStore.clearMultiPlayback()
+                }
+                .disabled(iptvStore.activeMultiPlaybackCount == 0)
+
+                Divider()
+
+                Button("Save M3U Playlist") {
+                    iptvStore.saveM3UPlaylist(account: accountStore.credentials)
+                }
+                .keyboardShortcut("s", modifiers: [.command, .option])
+                .disabled(iptvStore.channels.isEmpty)
+
+                Divider()
+
                 Button(iptvStore.isChannelBrowserVisible ? "Collapse Channels" : "Show Channels") {
                     iptvStore.toggleChannelBrowser()
                 }

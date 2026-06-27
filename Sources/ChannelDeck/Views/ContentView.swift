@@ -57,6 +57,15 @@ struct ContentView: View {
                 .help("Stop playback")
 
                 Button {
+                    iptvStore.isTheaterMode = false
+                    iptvStore.isMultiPlaybackMode = true
+                } label: {
+                    Label("Multiview", systemImage: "rectangle.grid.2x2")
+                }
+                .help("Show multiview player")
+                .disabled(iptvStore.channels.isEmpty)
+
+                Button {
                     iptvStore.toggleChannelBrowser()
                 } label: {
                     Label(iptvStore.isChannelBrowserVisible ? "Hide Channels" : "Show Channels", systemImage: iptvStore.isChannelBrowserVisible ? "sidebar.right" : "list.bullet")
@@ -75,6 +84,14 @@ struct ContentView: View {
                     Label("Full Screen Player", systemImage: "arrow.up.left.and.arrow.down.right")
                 }
                 .help("Enter video full screen")
+                .disabled(iptvStore.channels.isEmpty)
+
+                Button {
+                    iptvStore.saveM3UPlaylist(account: accountStore.credentials)
+                } label: {
+                    Label("Save M3U", systemImage: "square.and.arrow.down")
+                }
+                .help("Save a local M3U playlist")
                 .disabled(iptvStore.channels.isEmpty)
 
                 Button {

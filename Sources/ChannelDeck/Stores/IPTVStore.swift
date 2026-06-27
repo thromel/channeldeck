@@ -13,10 +13,19 @@ final class IPTVStore: ObservableObject {
     @Published private(set) var epgPrograms: [EPGProgram] = []
     @Published private(set) var epgState: EPGLoadState = .idle
     @Published private(set) var playbackDiagnostics: PlaybackDiagnostics = .idle
+    @Published private(set) var primaryRecording: LocalStreamRecording?
     @Published private(set) var state: IPTVLoadState = .idle
+    @Published private(set) var multiPlaybackSlots: [MultiPlaybackSlot]
+    @Published private(set) var hasSavedMultiPlaybackLayout: Bool
     @Published var isTheaterMode = false
+    @Published var isMultiPlaybackMode = false
     @Published var isChannelBrowserVisible = true
     @Published var isAccountInspectorVisible = false
+    @Published var multiPlaybackSlotCount: Int {
+        didSet {
+            defaults.set(multiPlaybackSlotCount, forKey: Keys.multiPlaybackSlotCount)
+        }
+    }
     @Published var selectedCategoryID = IPTVCategory.allID
     @Published var selectedChannelID: IPTVChannel.ID?
     @Published var searchText = ""
@@ -26,6 +35,7 @@ final class IPTVStore: ObservableObject {
     private let service: IPTVService
     private let defaults: UserDefaults
     private var lastLoadedAccount: IPTVCredentials?
+    private var currentStreamURL: URL?
     private var epgTask: Task<Void, Never>?
     private var playerTimeControlObservation: NSKeyValueObservation?
     private var itemStatusObservation: NSKeyValueObservation?
@@ -36,10 +46,24 @@ final class IPTVStore: ObservableObject {
     init(service: IPTVService = IPTVService(), defaults: UserDefaults = .standard) {
         self.service = service
         self.defaults = defaults
+        multiPlaybackSlots = (0..<4).map { MultiPlaybackSlot(id: $0) }
+        multiPlaybackSlotCount = {
+            let savedCount = defaults.integer(forKey: Keys.multiPlaybackSlotCount)
+            return savedCount == 0 ? 2 : min(max(savedCount, 2), 4)
+        }()
+        hasSavedMultiPlaybackLayout = defaults.data(forKey: Keys.multiPlaybackLayout) != nil
         favoriteChannelIDs = Set(defaults.array(forKey: Keys.favoriteChannelIDs) as? [IPTVChannel.ID] ?? [])
         pinnedChannelIDs = defaults.array(forKey: Keys.pinnedChannelIDs) as? [IPTVChannel.ID] ?? []
         recentChannelIDs = defaults.array(forKey: Keys.recentChannelIDs) as? [IPTVChannel.ID] ?? []
         observePlayer()
+    }
+
+    var visibleMultiPlaybackSlots: [MultiPlaybackSlot] {
+        Array(multiPlaybackSlots.prefix(multiPlaybackSlotCount))
+    }
+
+    var activeMultiPlaybackCount: Int {
+        multiPlaybackSlots.filter { !$0.isEmpty }.count
     }
 
     var filteredChannels: [IPTVChannel] {
@@ -148,6 +172,7 @@ final class IPTVStore: ObservableObject {
     }
 
     func play(_ channel: IPTVChannel, account: IPTVCredentials) {
+        clearMultiPlayback()
         guard let url = channel.streamURL(account: account) else {
             state = .failed("Could not create a stream URL for \(channel.name).")
             playbackDiagnostics = PlaybackDiagnostics.idle.updated(
@@ -160,6 +185,7 @@ final class IPTVStore: ObservableObject {
         }
 
         currentChannel = channel
+        currentStreamURL = url
         selectedChannelID = channel.id
         rememberRecent(channel)
         playbackDiagnostics = .preparing(channel: channel, account: account, url: url)
@@ -175,12 +201,162 @@ final class IPTVStore: ObservableObject {
         player.replaceCurrentItem(with: nil)
         stopObservingCurrentItem()
         currentChannel = nil
+        currentStreamURL = nil
         playbackDiagnostics = .idle
+        primaryRecording?.stop()
+        primaryRecording = nil
         epgTask?.cancel()
         epgTask = nil
         epgPrograms = []
         epgState = .idle
         isTheaterMode = false
+        clearMultiPlayback()
+    }
+
+    func togglePrimaryRecording(account: IPTVCredentials) {
+        if primaryRecording?.isActive == true {
+            primaryRecording?.stop()
+            return
+        }
+
+        guard let currentChannel,
+              let url = currentStreamURL ?? currentChannel.streamURL(account: account) else {
+            return
+        }
+
+        primaryRecording = makeRecording(channel: currentChannel, url: url)
+        primaryRecording?.start()
+    }
+
+    func revealPrimaryRecording() {
+        guard let recording = primaryRecording else {
+            return
+        }
+
+        WorkspaceOpener.reveal(recording.fileURL)
+    }
+
+    func setMultiPlaybackSlotCount(_ count: Int) {
+        let boundedCount = min(max(count, 2), 4)
+        multiPlaybackSlotCount = boundedCount
+        for slot in multiPlaybackSlots.dropFirst(boundedCount) {
+            slot.clear()
+        }
+        if activeMultiPlaybackCount == 0 {
+            isMultiPlaybackMode = false
+        }
+    }
+
+    func playInMultiPlayback(_ channel: IPTVChannel, account: IPTVCredentials, slotID: Int? = nil) {
+        guard let url = channel.streamURL(account: account) else {
+            state = .failed("Could not create a stream URL for \(channel.name).")
+            return
+        }
+
+        if currentChannel != nil {
+            stopPrimaryPlayerForMultiPlayback()
+        }
+
+        let targetSlot = slotForMultiPlayback(slotID: slotID)
+        targetSlot.play(channel: channel, url: url)
+        rememberRecent(channel)
+        selectedChannelID = channel.id
+        isTheaterMode = false
+        isMultiPlaybackMode = true
+    }
+
+    func clearMultiPlaybackSlot(_ slot: MultiPlaybackSlot) {
+        slot.clear()
+        if activeMultiPlaybackCount == 0 {
+            isMultiPlaybackMode = false
+        }
+    }
+
+    func clearMultiPlayback() {
+        for slot in multiPlaybackSlots {
+            slot.clear()
+        }
+        isMultiPlaybackMode = false
+    }
+
+    func toggleRecording(for slot: MultiPlaybackSlot) {
+        if slot.recording?.isActive == true {
+            slot.recording?.stop()
+            return
+        }
+
+        guard let channel = slot.channel,
+              let url = slot.streamURL else {
+            return
+        }
+
+        guard let recording = makeRecording(channel: channel, url: url) else {
+            return
+        }
+
+        slot.setRecording(recording)
+        recording.start()
+    }
+
+    func revealRecording(for slot: MultiPlaybackSlot) {
+        guard let recording = slot.recording else {
+            return
+        }
+
+        WorkspaceOpener.reveal(recording.fileURL)
+    }
+
+    func saveMultiPlaybackLayout() {
+        let layout = MultiPlaybackLayout(
+            slotCount: multiPlaybackSlotCount,
+            slots: multiPlaybackSlots.compactMap { slot in
+                guard let channel = slot.channel else {
+                    return nil
+                }
+
+                return MultiPlaybackLayoutSlot(
+                    id: slot.id,
+                    channelID: channel.id,
+                    volume: slot.volume,
+                    isMuted: slot.isMuted
+                )
+            }
+        )
+
+        guard let data = try? JSONEncoder().encode(layout) else {
+            return
+        }
+
+        defaults.set(data, forKey: Keys.multiPlaybackLayout)
+        hasSavedMultiPlaybackLayout = true
+    }
+
+    func restoreMultiPlaybackLayout(account: IPTVCredentials) {
+        guard let data = defaults.data(forKey: Keys.multiPlaybackLayout),
+              let layout = try? JSONDecoder().decode(MultiPlaybackLayout.self, from: data) else {
+            hasSavedMultiPlaybackLayout = false
+            return
+        }
+
+        clearMultiPlayback()
+        setMultiPlaybackSlotCount(layout.slotCount)
+
+        for savedSlot in layout.slots {
+            guard multiPlaybackSlots.indices.contains(savedSlot.id),
+                  let channel = channels.first(where: { $0.id == savedSlot.channelID }),
+                  let url = channel.streamURL(account: account) else {
+                continue
+            }
+
+            let slot = multiPlaybackSlots[savedSlot.id]
+            slot.setVolume(savedSlot.volume)
+            slot.setMuted(savedSlot.isMuted)
+            slot.play(channel: channel, url: url)
+            rememberRecent(channel)
+        }
+
+        isMultiPlaybackMode = activeMultiPlaybackCount > 0
+        hasSavedMultiPlaybackLayout = true
     }
 
     func togglePlayback() {
@@ -291,6 +467,10 @@ final class IPTVStore: ObservableObject {
         loadEPG(for: currentChannel, account: account)
     }
 
+    func saveM3UPlaylist(account: IPTVCredentials) {
+        M3UPlaylistExporter.save(channels: channels, account: account)
+    }
+
     private func playAdjacent(offset: Int, account: IPTVCredentials) {
         let visibleChannels = filteredChannels
         guard !visibleChannels.isEmpty else {
@@ -304,6 +484,43 @@ final class IPTVStore: ObservableObject {
 
         let nextIndex = (currentIndex + offset + visibleChannels.count) % visibleChannels.count
         play(visibleChannels[nextIndex], account: account)
+    }
+
+    private func stopPrimaryPlayerForMultiPlayback() {
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        stopObservingCurrentItem()
+        currentChannel = nil
+        currentStreamURL = nil
+        playbackDiagnostics = .idle
+        primaryRecording?.stop()
+        primaryRecording = nil
+        epgTask?.cancel()
+        epgTask = nil
+        epgPrograms = []
+        epgState = .idle
+    }
+
+    private func slotForMultiPlayback(slotID: Int?) -> MultiPlaybackSlot {
+        if let slotID,
+           multiPlaybackSlots.indices.contains(slotID) {
+            return multiPlaybackSlots[slotID]
+        }
+
+        if let emptySlot = visibleMultiPlaybackSlots.first(where: \.isEmpty) {
+            return emptySlot
+        }
+
+        return visibleMultiPlaybackSlots.first ?? multiPlaybackSlots[0]
+    }
+
+    private func makeRecording(channel: IPTVChannel, url: URL) -> LocalStreamRecording? {
+        guard let fileURL = try? LocalStreamRecording.defaultOutputURL(channel: channel, streamURL: url) else {
+            state = .failed("Could not create a local recording file.")
+            return nil
+        }
+
+        return LocalStreamRecording(channel: channel, streamURL: url, fileURL: fileURL)
     }
 
     private func rememberRecent(_ channel: IPTVChannel) {
@@ -536,4 +753,6 @@ private enum Keys {
     static let favoriteChannelIDs = "player.favoriteChannelIDs"
     static let pinnedChannelIDs = "player.pinnedChannelIDs"
     static let recentChannelIDs = "player.recentChannelIDs"
+    static let multiPlaybackSlotCount = "player.multiPlaybackSlotCount"
+    static let multiPlaybackLayout = "player.multiPlaybackLayout"
 }
