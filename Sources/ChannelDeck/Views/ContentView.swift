@@ -51,6 +51,9 @@ struct ContentView: View {
                 .environmentObject(accountStore)
                 .environmentObject(iptvStore)
         }
+        .sheet(isPresented: $iptvStore.isKeyboardShortcutsVisible) {
+            KeyboardShortcutsView()
+        }
         .toolbar {
             ToolbarItemGroup {
                 Button {
@@ -154,6 +157,13 @@ struct ContentView: View {
                     Label("Account", systemImage: "person.crop.circle")
                 }
                 .help("Show account and playback settings")
+
+                Button {
+                    iptvStore.isKeyboardShortcutsVisible = true
+                } label: {
+                    Label("Shortcuts", systemImage: "keyboard")
+                }
+                .help("Show keyboard shortcuts")
             }
         }
     }

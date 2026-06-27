@@ -367,6 +367,13 @@ struct ChannelDeckApp: App {
                 }
                 .keyboardShortcut("i", modifiers: [.command, .option])
             }
+
+            CommandMenu("Help") {
+                Button("Keyboard Shortcuts") {
+                    iptvStore.isKeyboardShortcutsVisible = true
+                }
+                .keyboardShortcut("/", modifiers: [.command])
+            }
         }
 
         Settings {

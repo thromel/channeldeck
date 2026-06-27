@@ -27,6 +27,7 @@ final class IPTVStore: ObservableObject {
     @Published var isLocalLibraryVisible = false
     @Published var isQuickSwitcherVisible = false
     @Published var isGuidePanelVisible = false
+    @Published var isKeyboardShortcutsVisible = false
     @Published var channelSourceFilter: ChannelSourceFilter = .all {
         didSet {
             defaults.set(channelSourceFilter.rawValue, forKey: Keys.channelSourceFilter)

@@ -38,6 +38,7 @@ Website: https://thromel.github.io/channeldeck/
 - Local-only stream recording to `~/Movies/ChannelDeck` for authorized streams.
 - Local library with search, type filters, sorting, and file actions for recordings and saved playlists.
 - Playback diagnostics with credential-safe copyable status reports.
+- Searchable in-app keyboard shortcut guide.
 - Collapsible channel browser.
 - Optional account inspector panel.
 - HLS `.m3u8` and MPEG-TS `.ts` stream URL modes.
@@ -112,6 +113,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 | `Option-Command-S` | Save local M3U playlist |
 | `Option-Command-J` | Show local recordings and saved playlists |
 | `Option-Command-C` | Copy playback diagnostics |
+| `Command-/` | Show keyboard shortcuts |
 | `Command-.` | Stop playback |
 | `Control-Command-F` | Enter or exit full-screen player |
 | `Escape` | Exit full-screen player |
