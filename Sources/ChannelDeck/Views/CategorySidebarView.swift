@@ -61,6 +61,8 @@ private struct CategoryRow: View {
         switch category.id {
         case IPTVCategory.allID:
             "tv"
+        case IPTVCategory.pinnedID:
+            "pin"
         case IPTVCategory.favoritesID:
             "star"
         case IPTVCategory.recentID:
@@ -72,6 +74,8 @@ private struct CategoryRow: View {
 
     private var iconStyle: AnyShapeStyle {
         switch category.id {
+        case IPTVCategory.pinnedID:
+            AnyShapeStyle(.orange)
         case IPTVCategory.favoritesID:
             AnyShapeStyle(.yellow)
         case IPTVCategory.recentID:
@@ -85,6 +89,8 @@ private struct CategoryRow: View {
         switch category.id {
         case IPTVCategory.allID:
             "Every loaded channel"
+        case IPTVCategory.pinnedID:
+            "Top shelf"
         case IPTVCategory.favoritesID:
             "Saved locally"
         case IPTVCategory.recentID:
@@ -118,6 +124,7 @@ private struct SidebarStatusView: View {
 
             if !iptvStore.channels.isEmpty {
                 HStack(spacing: 6) {
+                    SidebarMetric(label: "Pins", value: iptvStore.pinnedChannels.count)
                     SidebarMetric(label: "Fav", value: iptvStore.favoriteChannelIDs.count)
                     SidebarMetric(label: "Recent", value: iptvStore.recentChannels.count)
                 }

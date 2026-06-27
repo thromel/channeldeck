@@ -7,6 +7,7 @@ final class IPTVStore: ObservableObject {
     @Published private(set) var channels: [IPTVChannel] = []
     @Published private(set) var accountSummary: AccountSummary?
     @Published private(set) var currentChannel: IPTVChannel?
+    @Published private(set) var pinnedChannels: [IPTVChannel] = []
     @Published private(set) var recentChannels: [IPTVChannel] = []
     @Published private(set) var favoriteChannelIDs: Set<IPTVChannel.ID>
     @Published private(set) var epgPrograms: [EPGProgram] = []
@@ -25,37 +26,44 @@ final class IPTVStore: ObservableObject {
     private let defaults: UserDefaults
     private var lastLoadedAccount: IPTVCredentials?
     private var epgTask: Task<Void, Never>?
+    private var pinnedChannelIDs: [IPTVChannel.ID]
     private var recentChannelIDs: [IPTVChannel.ID]
 
     init(service: IPTVService = IPTVService(), defaults: UserDefaults = .standard) {
         self.service = service
         self.defaults = defaults
         favoriteChannelIDs = Set(defaults.array(forKey: Keys.favoriteChannelIDs) as? [IPTVChannel.ID] ?? [])
+        pinnedChannelIDs = defaults.array(forKey: Keys.pinnedChannelIDs) as? [IPTVChannel.ID] ?? []
         recentChannelIDs = defaults.array(forKey: Keys.recentChannelIDs) as? [IPTVChannel.ID] ?? []
     }
 
     var filteredChannels: [IPTVChannel] {
         let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
 
-        return channels.filter { channel in
-            let categoryMatches: Bool
-            if selectedCategoryID == IPTVCategory.allID {
-                categoryMatches = true
-            } else if selectedCategoryID == IPTVCategory.favoritesID {
-                categoryMatches = favoriteChannelIDs.contains(channel.id)
-            } else if selectedCategoryID == IPTVCategory.recentID {
-                categoryMatches = recentChannels.contains(where: { $0.id == channel.id })
-            } else {
-                categoryMatches = channel.categoryID == selectedCategoryID
-            }
+        let categoryChannels: [IPTVChannel]
+        switch selectedCategoryID {
+        case IPTVCategory.allID:
+            categoryChannels = channels
+        case IPTVCategory.pinnedID:
+            categoryChannels = pinnedChannels
+        case IPTVCategory.favoritesID:
+            categoryChannels = channels.filter { favoriteChannelIDs.contains($0.id) }
+        case IPTVCategory.recentID:
+            categoryChannels = recentChannels
+        default:
+            categoryChannels = channels.filter { $0.categoryID == selectedCategoryID }
+        }
+
+        return categoryChannels.filter { channel in
             let searchMatches = query.isEmpty || channel.name.lowercased().contains(query)
-            return categoryMatches && searchMatches
+            return searchMatches
         }
     }
 
     var visibleCategories: [IPTVCategory] {
         [
             IPTVCategory(id: IPTVCategory.allID, name: "All Channels"),
+            IPTVCategory(id: IPTVCategory.pinnedID, name: "Pinned"),
             IPTVCategory(id: IPTVCategory.favoritesID, name: "Favorites"),
             IPTVCategory(id: IPTVCategory.recentID, name: "Recently Played")
         ] + categories
@@ -64,6 +72,9 @@ final class IPTVStore: ObservableObject {
     func categoryName(for id: String) -> String {
         if id == IPTVCategory.allID {
             return "All Channels"
+        }
+        if id == IPTVCategory.pinnedID {
+            return "Pinned"
         }
         if id == IPTVCategory.favoritesID {
             return "Favorites"
@@ -78,6 +89,9 @@ final class IPTVStore: ObservableObject {
     func channelCount(for categoryID: String) -> Int {
         if categoryID == IPTVCategory.allID {
             return channels.count
+        }
+        if categoryID == IPTVCategory.pinnedID {
+            return pinnedChannels.count
         }
         if categoryID == IPTVCategory.favoritesID {
             return channels.filter { favoriteChannelIDs.contains($0.id) }.count
@@ -115,6 +129,7 @@ final class IPTVStore: ObservableObject {
             channels = try await fetchedChannels.sorted { lhs, rhs in
                 lhs.name.localizedCaseInsensitiveCompare(rhs.name) == .orderedAscending
             }
+            restorePinnedChannels()
             restoreRecentChannels()
             lastLoadedAccount = account
             state = .loaded(Date())
@@ -198,6 +213,10 @@ final class IPTVStore: ObservableObject {
         favoriteChannelIDs.contains(channel.id)
     }
 
+    func isPinned(_ channel: IPTVChannel) -> Bool {
+        pinnedChannelIDs.contains(channel.id)
+    }
+
     func toggleFavorite(_ channel: IPTVChannel) {
         if favoriteChannelIDs.contains(channel.id) {
             favoriteChannelIDs.remove(channel.id)
@@ -208,12 +227,39 @@ final class IPTVStore: ObservableObject {
         persistFavorites()
     }
 
+    func togglePin(_ channel: IPTVChannel) {
+        if let index = pinnedChannelIDs.firstIndex(of: channel.id) {
+            pinnedChannelIDs.remove(at: index)
+            pinnedChannels.removeAll { $0.id == channel.id }
+        } else {
+            pinnedChannelIDs.insert(channel.id, at: 0)
+            pinnedChannels.removeAll { $0.id == channel.id }
+            pinnedChannels.insert(channel, at: 0)
+        }
+
+        persistPinnedChannels()
+    }
+
     func toggleFavoriteForCurrentChannel() {
         guard let currentChannel else {
             return
         }
 
         toggleFavorite(currentChannel)
+    }
+
+    func togglePinForCurrentChannel() {
+        guard let currentChannel else {
+            return
+        }
+
+        togglePin(currentChannel)
+    }
+
+    func clearPinnedChannels() {
+        pinnedChannelIDs = []
+        pinnedChannels = []
+        persistPinnedChannels()
     }
 
     func clearRecentChannels() {
@@ -260,6 +306,17 @@ final class IPTVStore: ObservableObject {
         }
     }
 
+    private func restorePinnedChannels() {
+        let channelByID = Dictionary(uniqueKeysWithValues: channels.map { ($0.id, $0) })
+        pinnedChannels = pinnedChannelIDs.compactMap { channelByID[$0] }
+
+        let restoredIDs = pinnedChannels.map(\.id)
+        if restoredIDs != pinnedChannelIDs {
+            pinnedChannelIDs = restoredIDs
+            persistPinnedChannels()
+        }
+    }
+
     private func restoreRecentChannels() {
         let channelByID = Dictionary(uniqueKeysWithValues: channels.map { ($0.id, $0) })
         recentChannels = recentChannelIDs.compactMap { channelByID[$0] }
@@ -302,6 +359,10 @@ final class IPTVStore: ObservableObject {
         defaults.set(Array(favoriteChannelIDs).sorted(), forKey: Keys.favoriteChannelIDs)
     }
 
+    private func persistPinnedChannels() {
+        defaults.set(pinnedChannelIDs, forKey: Keys.pinnedChannelIDs)
+    }
+
     private func persistRecentChannels() {
         defaults.set(recentChannelIDs, forKey: Keys.recentChannelIDs)
     }
@@ -309,5 +370,6 @@ final class IPTVStore: ObservableObject {
 
 private enum Keys {
     static let favoriteChannelIDs = "player.favoriteChannelIDs"
+    static let pinnedChannelIDs = "player.pinnedChannelIDs"
     static let recentChannelIDs = "player.recentChannelIDs"
 }

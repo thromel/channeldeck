@@ -244,6 +244,12 @@ struct ChannelDeckApp: App {
                 .keyboardShortcut("d", modifiers: [.command])
                 .disabled(iptvStore.currentChannel == nil)
 
+                Button(iptvStore.currentChannel.map { iptvStore.isPinned($0) } == true ? "Unpin Current Channel" : "Pin Current Channel") {
+                    iptvStore.togglePinForCurrentChannel()
+                }
+                .keyboardShortcut("d", modifiers: [.command, .shift])
+                .disabled(iptvStore.currentChannel == nil)
+
                 Divider()
 
                 Button(iptvStore.isTheaterMode ? "Exit Full Screen Player" : "Full Screen Player") {

@@ -52,6 +52,7 @@ private struct EmptyPlayerState: View {
 
             if !iptvStore.channels.isEmpty {
                 HStack(spacing: 8) {
+                    EmptyStatePill(label: "Pins", value: iptvStore.pinnedChannels.count, systemImage: "pin.fill")
                     EmptyStatePill(label: "Favorites", value: iptvStore.favoriteChannelIDs.count, systemImage: "star.fill")
                     EmptyStatePill(label: "Recent", value: iptvStore.recentChannels.count, systemImage: "clock.arrow.circlepath")
                 }
@@ -123,6 +124,13 @@ private struct PlayerFooter: View {
 
                 if let channel = iptvStore.currentChannel,
                    let url = channel.streamURL(account: accountStore.credentials) {
+                    Button {
+                        iptvStore.togglePin(channel)
+                    } label: {
+                        Label(iptvStore.isPinned(channel) ? "Pinned" : "Pin", systemImage: iptvStore.isPinned(channel) ? "pin.fill" : "pin")
+                    }
+                    .help(iptvStore.isPinned(channel) ? "Unpin channel" : "Pin channel")
+
                     Button {
                         iptvStore.toggleFavorite(channel)
                     } label: {

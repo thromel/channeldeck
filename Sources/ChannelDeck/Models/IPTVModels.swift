@@ -52,6 +52,7 @@ struct AccountSummary: Equatable {
 
 struct IPTVCategory: Identifiable, Hashable, Decodable {
     static let allID = "__all__"
+    static let pinnedID = "__pinned__"
     static let favoritesID = "__favorites__"
     static let recentID = "__recent__"
 

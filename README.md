@@ -20,6 +20,7 @@ Website: https://thromel.github.io/channeldeck/
 - Account validation through `player_api.php`.
 - Live category loading and live channel loading.
 - Channel search and category filtering.
+- Persistent pinned channels with a dedicated Pinned category.
 - Recently played category that persists across launches.
 - Persistent favorites with a dedicated Favorites category.
 - Short EPG guide loading for the playing channel, with Now/Next display when provider data is available.
@@ -71,7 +72,6 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 - Real recorded demo for the website and README.
 - Developer ID signing and notarization for smoother macOS installs.
 - Full EPG grid and richer schedule browsing.
-- Pinned channels.
 - More library management controls for saved and recently played channels.
 - VOD and series support for compatible provider APIs.
 - Picture-in-picture.
@@ -87,6 +87,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 | `Command-[` | Previous channel |
 | `Command-]` | Next channel |
 | `Command-D` | Add or remove the current channel from favorites |
+| `Command-Shift-D` | Pin or unpin the current channel |
 | `Command-.` | Stop playback |
 | `Control-Command-F` | Enter or exit full-screen player |
 | `Escape` | Exit full-screen player |

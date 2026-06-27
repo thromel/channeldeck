@@ -37,7 +37,8 @@ struct ChannelBrowserView: View {
             }
 
             HStack(spacing: 8) {
-                BrowserStatPill(title: "Favorites", value: iptvStore.favoriteChannelIDs.count, systemImage: "star.fill", tint: .yellow)
+                BrowserStatPill(title: "Pins", value: iptvStore.pinnedChannels.count, systemImage: "pin.fill", tint: .orange)
+                BrowserStatPill(title: "Fav", value: iptvStore.favoriteChannelIDs.count, systemImage: "star.fill", tint: .yellow)
                 BrowserStatPill(title: "Recent", value: iptvStore.recentChannels.count, systemImage: "clock.arrow.circlepath", tint: .blue)
 
                 Spacer(minLength: 0)
@@ -51,6 +52,17 @@ struct ChannelBrowserView: View {
                     }
                     .buttonStyle(.borderless)
                     .help("Clear recently played channels")
+                }
+
+                if iptvStore.selectedCategoryID == IPTVCategory.pinnedID,
+                   !iptvStore.pinnedChannels.isEmpty {
+                    Button {
+                        iptvStore.clearPinnedChannels()
+                    } label: {
+                        Label("Clear Pins", systemImage: "xmark.circle")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Clear pinned channels")
                 }
             }
         }
@@ -73,7 +85,11 @@ struct ChannelBrowserView: View {
                         channel: channel,
                         categoryName: iptvStore.categoryName(for: channel.categoryID),
                         isPlaying: iptvStore.currentChannel?.id == channel.id,
+                        isPinned: iptvStore.isPinned(channel),
                         isFavorite: iptvStore.isFavorite(channel),
+                        onPinToggle: {
+                            iptvStore.togglePin(channel)
+                        },
                         onFavoriteToggle: {
                             iptvStore.toggleFavorite(channel)
                         }
@@ -100,8 +116,18 @@ struct ChannelBrowserView: View {
 
                         Divider()
 
+                        Button(iptvStore.isPinned(channel) ? "Unpin Channel" : "Pin Channel") {
+                            iptvStore.togglePin(channel)
+                        }
+
                         Button(iptvStore.isFavorite(channel) ? "Remove from Favorites" : "Add to Favorites") {
                             iptvStore.toggleFavorite(channel)
+                        }
+
+                        if iptvStore.selectedCategoryID == IPTVCategory.pinnedID {
+                            Button("Clear Pinned Channels") {
+                                iptvStore.clearPinnedChannels()
+                            }
                         }
 
                         if iptvStore.selectedCategoryID == IPTVCategory.recentID {
@@ -127,6 +153,8 @@ struct ChannelBrowserView: View {
         }
 
         switch iptvStore.selectedCategoryID {
+        case IPTVCategory.pinnedID:
+            return "No Pinned Channels"
         case IPTVCategory.favoritesID:
             return "No Favorites Yet"
         case IPTVCategory.recentID:
@@ -138,6 +166,8 @@ struct ChannelBrowserView: View {
 
     private var emptyIcon: String {
         switch iptvStore.selectedCategoryID {
+        case IPTVCategory.pinnedID:
+            return "pin"
         case IPTVCategory.favoritesID:
             return "star"
         case IPTVCategory.recentID:
@@ -153,6 +183,8 @@ struct ChannelBrowserView: View {
         }
 
         switch iptvStore.selectedCategoryID {
+        case IPTVCategory.pinnedID:
+            return "Use the pin button on any channel to keep it at the top of your library."
         case IPTVCategory.favoritesID:
             return "Use the star button on any channel to save it here."
         case IPTVCategory.recentID:
@@ -216,6 +248,23 @@ struct CollapsedChannelRailView: View {
                     .foregroundStyle(.secondary)
             }
 
+            if !iptvStore.pinnedChannels.isEmpty {
+                Divider()
+
+                VStack(spacing: 6) {
+                    Image(systemName: "pin.fill")
+                        .foregroundStyle(.orange)
+
+                    Text("\(iptvStore.pinnedChannels.count)")
+                        .font(.headline)
+                        .monospacedDigit()
+
+                    Text("pinned")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             if !iptvStore.favoriteChannelIDs.isEmpty {
                 Divider()
 
@@ -253,7 +302,9 @@ private struct ChannelRow: View {
     let channel: IPTVChannel
     let categoryName: String
     let isPlaying: Bool
+    let isPinned: Bool
     let isFavorite: Bool
+    let onPinToggle: () -> Void
     let onFavoriteToggle: () -> Void
 
     var body: some View {
@@ -285,6 +336,17 @@ private struct ChannelRow: View {
             }
 
             Spacer(minLength: 0)
+
+            Button {
+                onPinToggle()
+            } label: {
+                Image(systemName: isPinned ? "pin.fill" : "pin")
+                    .font(.caption)
+                    .foregroundStyle(isPinned ? AnyShapeStyle(.orange) : AnyShapeStyle(.tertiary))
+                    .frame(width: 24, height: 24)
+            }
+            .buttonStyle(.borderless)
+            .help(isPinned ? "Unpin channel" : "Pin channel")
 
             Button {
                 onFavoriteToggle()
