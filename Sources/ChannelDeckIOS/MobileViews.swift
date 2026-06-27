@@ -1,7 +1,7 @@
 import AVKit
 import SwiftUI
 
-enum MobileAppTab: String, CaseIterable, Identifiable {
+enum MobileAppTab: String, CaseIterable, Identifiable, Hashable {
     case browse
     case player
     case multiview
@@ -9,72 +9,264 @@ enum MobileAppTab: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    @ViewBuilder
-    var label: some View {
+    var title: String {
         switch self {
         case .browse:
-            Label("Browse", systemImage: "rectangle.grid.1x2")
+            "Browse"
         case .player:
-            Label("Player", systemImage: "play.rectangle")
+            "Player"
         case .multiview:
-            Label("Multiview", systemImage: "rectangle.grid.2x2")
+            "Multiview"
         case .settings:
-            Label("Settings", systemImage: "gearshape")
+            "Settings"
         }
+    }
+
+    var navigationTitle: String {
+        switch self {
+        case .browse:
+            "Channels"
+        case .player:
+            "Player"
+        case .multiview:
+            "Multiview"
+        case .settings:
+            "Settings"
+        }
+    }
+
+    var systemImage: String {
+        switch self {
+        case .browse:
+            "rectangle.grid.1x2"
+        case .player:
+            "play.rectangle"
+        case .multiview:
+            "rectangle.grid.2x2"
+        case .settings:
+            "gearshape"
+        }
+    }
+
+    @ViewBuilder
+    var label: some View {
+        Label(title, systemImage: systemImage)
     }
 }
 
 struct MobileRootView: View {
     @StateObject private var store = MobileIPTVStore()
     @State private var selectedTab: MobileAppTab = .browse
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationStack {
-                MobileBrowseView(store: store, selectedTab: $selectedTab)
-                    .navigationTitle("Channels")
-                    .toolbar {
-                        ToolbarItem(placement: .primaryAction) {
-                            Button {
-                                Task {
-                                    await store.loadAccount()
-                                }
-                            } label: {
-                                Label("Reload", systemImage: "arrow.clockwise")
-                            }
-                            .disabled(!store.canLoadAccount)
-                        }
-                    }
+        Group {
+            if horizontalSizeClass == .regular {
+                MobileSplitRootView(store: store, selectedTab: $selectedTab)
+            } else {
+                MobileTabRootView(store: store, selectedTab: $selectedTab)
             }
-            .tabItem { MobileAppTab.browse.label }
-            .tag(MobileAppTab.browse)
-
-            NavigationStack {
-                MobilePlayerView(store: store)
-                    .navigationTitle("Player")
-            }
-            .tabItem { MobileAppTab.player.label }
-            .tag(MobileAppTab.player)
-
-            NavigationStack {
-                MobileMultiviewView(store: store)
-                    .navigationTitle("Multiview")
-            }
-            .tabItem { MobileAppTab.multiview.label }
-            .tag(MobileAppTab.multiview)
-
-            NavigationStack {
-                MobileSettingsView(store: store)
-                    .navigationTitle("Settings")
-            }
-            .tabItem { MobileAppTab.settings.label }
-            .tag(MobileAppTab.settings)
         }
         .task {
             if store.channels.isEmpty, store.loadState == .idle {
                 store.loadSamplePlaylist()
             }
         }
+    }
+}
+
+struct MobileTabRootView: View {
+    @ObservedObject var store: MobileIPTVStore
+    @Binding var selectedTab: MobileAppTab
+
+    var body: some View {
+        TabView(selection: $selectedTab) {
+            ForEach(MobileAppTab.allCases) { tab in
+                NavigationStack {
+                    MobileRootDestinationView(
+                        tab: tab,
+                        store: store,
+                        selectedTab: $selectedTab,
+                        showsBrowseReload: true
+                    )
+                }
+                .tabItem { tab.label }
+                .tag(tab)
+            }
+        }
+    }
+}
+
+struct MobileSplitRootView: View {
+    @ObservedObject var store: MobileIPTVStore
+    @Binding var selectedTab: MobileAppTab
+    @State private var columnVisibility: NavigationSplitViewVisibility = .all
+
+    var body: some View {
+        NavigationSplitView(columnVisibility: $columnVisibility) {
+            List(selection: $selectedTab) {
+                Section("Watch") {
+                    ForEach(MobileAppTab.allCases) { tab in
+                        MobileSidebarTabRow(tab: tab, store: store)
+                            .tag(tab)
+                    }
+                }
+
+                Section("Status") {
+                    MobileSidebarMetricRow(
+                        title: "Channels",
+                        value: "\(store.channels.count)",
+                        systemImage: "tv"
+                    )
+                    MobileSidebarMetricRow(
+                        title: "Multiview",
+                        value: "\(store.activeMultiviewCount)/4",
+                        systemImage: "rectangle.grid.2x2"
+                    )
+                    if let currentChannel = store.currentChannel {
+                        MobileSidebarNowPlayingRow(channel: currentChannel)
+                    }
+                }
+            }
+            .navigationTitle("ChannelDeck")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        Task {
+                            await store.loadAccount()
+                        }
+                    } label: {
+                        Label("Reload", systemImage: "arrow.clockwise")
+                    }
+                    .disabled(!store.canLoadAccount)
+                }
+            }
+        } detail: {
+            NavigationStack {
+                MobileRootDestinationView(
+                    tab: selectedTab,
+                    store: store,
+                    selectedTab: $selectedTab,
+                    showsBrowseReload: false
+                )
+            }
+        }
+        .navigationSplitViewStyle(.balanced)
+    }
+}
+
+struct MobileRootDestinationView: View {
+    let tab: MobileAppTab
+    @ObservedObject var store: MobileIPTVStore
+    @Binding var selectedTab: MobileAppTab
+    let showsBrowseReload: Bool
+
+    var body: some View {
+        Group {
+            switch tab {
+            case .browse:
+                if showsBrowseReload {
+                    MobileBrowseView(store: store, selectedTab: $selectedTab)
+                        .toolbar {
+                            ToolbarItem(placement: .primaryAction) {
+                                Button {
+                                    Task {
+                                        await store.loadAccount()
+                                    }
+                                } label: {
+                                    Label("Reload", systemImage: "arrow.clockwise")
+                                }
+                                .disabled(!store.canLoadAccount)
+                            }
+                        }
+                } else {
+                    MobileBrowseView(store: store, selectedTab: $selectedTab)
+                }
+            case .player:
+                MobilePlayerView(store: store)
+            case .multiview:
+                MobileMultiviewView(store: store)
+            case .settings:
+                MobileSettingsView(store: store)
+            }
+        }
+        .navigationTitle(tab.navigationTitle)
+    }
+}
+
+struct MobileSidebarTabRow: View {
+    let tab: MobileAppTab
+    @ObservedObject var store: MobileIPTVStore
+
+    var body: some View {
+        Label {
+            HStack {
+                Text(tab.title)
+                Spacer(minLength: 8)
+                if let badge = badgeText {
+                    Text(badge)
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        } icon: {
+            Image(systemName: tab.systemImage)
+        }
+    }
+
+    private var badgeText: String? {
+        switch tab {
+        case .browse:
+            store.channels.isEmpty ? nil : "\(store.channels.count)"
+        case .player:
+            store.currentChannel == nil ? nil : "Live"
+        case .multiview:
+            store.activeMultiviewCount == 0 ? nil : "\(store.activeMultiviewCount)"
+        case .settings:
+            nil
+        }
+    }
+}
+
+struct MobileSidebarMetricRow: View {
+    let title: String
+    let value: String
+    let systemImage: String
+
+    var body: some View {
+        Label {
+            HStack {
+                Text(title)
+                Spacer()
+                Text(value)
+                    .font(.caption.monospacedDigit().weight(.semibold))
+                    .foregroundStyle(.secondary)
+            }
+        } icon: {
+            Image(systemName: systemImage)
+        }
+    }
+}
+
+struct MobileSidebarNowPlayingRow: View {
+    let channel: MobileIPTVChannel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Label("Now Playing", systemImage: "waveform")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(Color.accentColor)
+
+            Text(channel.name)
+                .font(.subheadline.weight(.semibold))
+                .lineLimit(2)
+
+            Text(channel.sourceLabel)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+        }
+        .padding(.vertical, 4)
     }
 }
 

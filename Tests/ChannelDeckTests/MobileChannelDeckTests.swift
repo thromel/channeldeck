@@ -2,6 +2,21 @@ import XCTest
 @testable import ChannelDeckIOS
 
 final class MobileChannelDeckTests: XCTestCase {
+    func testMobileNavigationTabsExposeStableAdaptiveShellOrder() {
+        XCTAssertEqual(
+            MobileAppTab.allCases.map(\.title),
+            ["Browse", "Player", "Multiview", "Settings"]
+        )
+        XCTAssertEqual(
+            MobileAppTab.allCases.map(\.navigationTitle),
+            ["Channels", "Player", "Multiview", "Settings"]
+        )
+        XCTAssertEqual(
+            MobileAppTab.allCases.map(\.systemImage),
+            ["rectangle.grid.1x2", "play.rectangle", "rectangle.grid.2x2", "gearshape"]
+        )
+    }
+
     func testMobileSamplePlaylistUsesPublicDirectStreams() {
         XCTAssertEqual(MobileSamplePlaylistProvider.categories.map(\.name), ["All", "Sample"])
         XCTAssertEqual(MobileSamplePlaylistProvider.channels.map(\.name), ["Big Buck Bunny", "Sintel"])
