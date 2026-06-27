@@ -13,6 +13,7 @@ final class MobileIPTVStore: ObservableObject {
     @Published var currentChannel: MobileIPTVChannel?
     @Published var accountSummary: MobileAccountSummary?
     @Published var loadState: MobileLoadState = .idle
+    @Published var playlistSourceName: String?
     @Published private(set) var multiviewSlots: [MobileMultiviewSlot] = (0..<4).map {
         MobileMultiviewSlot(index: $0)
     }
@@ -86,6 +87,7 @@ final class MobileIPTVStore: ObservableObject {
         player.replaceCurrentItem(with: nil)
         currentChannel = nil
         accountSummary = nil
+        playlistSourceName = MobileSamplePlaylistProvider.displayName
         clearMultiview()
         categories = MobileSamplePlaylistProvider.categories
         channels = MobileSamplePlaylistProvider.channels
@@ -112,6 +114,7 @@ final class MobileIPTVStore: ObservableObject {
             try credentialStore.save(credentials)
 
             accountSummary = summary
+            playlistSourceName = nil
             categories = [
                 MobileIPTVCategory(id: MobileIPTVCategory.allID, name: "All")
             ] + fetchedCategories.sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
@@ -139,6 +142,38 @@ final class MobileIPTVStore: ObservableObject {
         player.pause()
         player.replaceCurrentItem(with: nil)
         currentChannel = nil
+    }
+
+    @discardableResult
+    func importPlaylist(from url: URL) throws -> Int {
+        let shouldStopAccessing = url.startAccessingSecurityScopedResource()
+        defer {
+            if shouldStopAccessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+        }
+
+        let text = try String(contentsOf: url, encoding: .utf8)
+        let result = MobileM3UPlaylistParser.parse(text: text, sourceURL: url)
+        guard !result.channels.isEmpty else {
+            throw MobilePlaylistStoreError.emptyPlaylist
+        }
+
+        applyImportedPlaylist(result)
+        return result.channels.count
+    }
+
+    func exportPlaylistText() throws -> String {
+        guard !channels.isEmpty else {
+            throw MobilePlaylistStoreError.emptyPlaylist
+        }
+
+        let text = MobileM3UPlaylistExporter.makePlaylist(channels: channels, credentials: credentials)
+        guard text.components(separatedBy: .newlines).contains(where: { $0.hasPrefix("http") || $0.hasPrefix("file:") }) else {
+            throw MobilePlaylistStoreError.noPlayableURLs
+        }
+
+        return text
     }
 
     func playInMultiview(_ channel: MobileIPTVChannel, slotID: MobileMultiviewSlot.ID? = nil) {
@@ -169,5 +204,35 @@ final class MobileIPTVStore: ObservableObject {
         }
 
         return multiviewSlots.first(where: \.isEmpty) ?? multiviewSlots[0]
+    }
+
+    private func applyImportedPlaylist(_ result: MobileM3UImportResult) {
+        player.pause()
+        player.replaceCurrentItem(with: nil)
+        currentChannel = nil
+        accountSummary = nil
+        playlistSourceName = result.sourceURL.lastPathComponent
+        clearMultiview()
+        categories = [
+            MobileIPTVCategory(id: MobileIPTVCategory.allID, name: "All")
+        ] + result.categories
+        channels = result.channels
+        selectedCategoryID = result.categories.first?.id ?? MobileIPTVCategory.allID
+        searchText = ""
+        loadState = .loaded(Date())
+    }
+}
+
+enum MobilePlaylistStoreError: LocalizedError {
+    case emptyPlaylist
+    case noPlayableURLs
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyPlaylist:
+            "The playlist does not contain any playable channels."
+        case .noPlayableURLs:
+            "No playable stream URLs could be exported from the current channels."
+        }
     }
 }

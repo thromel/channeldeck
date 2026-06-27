@@ -854,6 +854,11 @@ struct MobileMultiviewChannelPickerRow: View {
 
 struct MobileSettingsView: View {
     @ObservedObject var store: MobileIPTVStore
+    @State private var isImportingPlaylist = false
+    @State private var isExportingPlaylist = false
+    @State private var exportDocument = MobileM3UPlaylistDocument()
+    @State private var exportFilename = MobileM3UPlaylistExporter.defaultFilename()
+    @State private var playlistNotice: MobilePlaylistNotice?
 
     var body: some View {
         Form {
@@ -893,6 +898,25 @@ struct MobileSettingsView: View {
                 }
             }
 
+            Section("Local Playlists") {
+                Button {
+                    isImportingPlaylist = true
+                } label: {
+                    Label("Import M3U Playlist", systemImage: "square.and.arrow.down")
+                }
+
+                Button {
+                    preparePlaylistExport()
+                } label: {
+                    Label("Export Current Channels", systemImage: "square.and.arrow.up")
+                }
+                .disabled(store.channels.isEmpty)
+
+                if let playlistSourceName = store.playlistSourceName {
+                    MobileStatusRow(title: "Source", detail: playlistSourceName)
+                }
+            }
+
             Section("Status") {
                 MobileStatusRow(title: store.loadState.title, detail: store.loadState.detail)
                 MobileStatusRow(title: "Channels", detail: store.channelCountLabel)
@@ -916,7 +940,86 @@ struct MobileSettingsView: View {
                     .foregroundStyle(.secondary)
             }
         }
+        .fileImporter(
+            isPresented: $isImportingPlaylist,
+            allowedContentTypes: MobilePlaylistFileTypes.readable,
+            allowsMultipleSelection: false
+        ) { result in
+            importPlaylist(result: result)
+        }
+        .fileExporter(
+            isPresented: $isExportingPlaylist,
+            document: exportDocument,
+            contentType: MobilePlaylistFileTypes.m3u,
+            defaultFilename: exportFilename
+        ) { result in
+            handleExport(result: result)
+        }
+        .alert(item: $playlistNotice) { notice in
+            Alert(
+                title: Text(notice.title),
+                message: Text(notice.message),
+                dismissButton: .default(Text("OK"))
+            )
+        }
     }
+
+    private func importPlaylist(result: Result<[URL], Error>) {
+        do {
+            guard let url = try result.get().first else {
+                playlistNotice = MobilePlaylistNotice(
+                    title: "No Playlist Selected",
+                    message: "Choose an M3U or M3U8 file to import."
+                )
+                return
+            }
+
+            let count = try store.importPlaylist(from: url)
+            playlistNotice = MobilePlaylistNotice(
+                title: "Playlist Imported",
+                message: "\(count) channels loaded from \(url.lastPathComponent)."
+            )
+        } catch {
+            playlistNotice = MobilePlaylistNotice(
+                title: "Import Failed",
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func preparePlaylistExport() {
+        do {
+            exportDocument = MobileM3UPlaylistDocument(text: try store.exportPlaylistText())
+            exportFilename = MobileM3UPlaylistExporter.defaultFilename()
+            isExportingPlaylist = true
+        } catch {
+            playlistNotice = MobilePlaylistNotice(
+                title: "Export Failed",
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func handleExport(result: Result<URL, Error>) {
+        switch result {
+        case .success(let url):
+            playlistNotice = MobilePlaylistNotice(
+                title: "Playlist Exported",
+                message: "Saved \(url.lastPathComponent)."
+            )
+        case .failure(let error):
+            playlistNotice = MobilePlaylistNotice(
+                title: "Export Failed",
+                message: error.localizedDescription
+            )
+        }
+    }
+}
+
+struct MobilePlaylistNotice: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
 }
 
 struct MobileStatusRow: View {

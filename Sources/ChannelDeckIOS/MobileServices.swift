@@ -96,6 +96,8 @@ enum MobileIPTVServiceError: LocalizedError {
 }
 
 enum MobileSamplePlaylistProvider {
+    static let displayName = "ChannelDeck Sample Playlist.m3u"
+
     static let categories = [
         MobileIPTVCategory(id: MobileIPTVCategory.allID, name: "All"),
         MobileIPTVCategory(id: MobileIPTVCategory.sampleID, name: "Sample")

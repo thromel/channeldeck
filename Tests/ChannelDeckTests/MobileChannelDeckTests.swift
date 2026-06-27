@@ -47,6 +47,88 @@ final class MobileChannelDeckTests: XCTestCase {
         )
     }
 
+    func testMobileM3UParserKeepsGroupsLogosRelativeURLsAndQuotedCommas() {
+        let sourceURL = URL(fileURLWithPath: "/tmp/mobile-playlists/news/list.m3u")
+        let result = MobileM3UPlaylistParser.parse(
+            text: """
+            #EXTM3U
+            #EXTINF:-1 tvg-logo="https://example.com/somoy.png" group-title="News, Local",Somoy TV
+            https://example.com/somoy.m3u8
+            #EXTGRP:Kids
+            #EXTINF:-1,Bunny Junior
+            streams/bunny.m3u8
+            """,
+            sourceURL: sourceURL
+        )
+
+        XCTAssertEqual(result.categories.map(\.name), ["News, Local", "Kids"])
+        XCTAssertEqual(result.channels.map(\.name), ["Bunny Junior", "Somoy TV"])
+        XCTAssertEqual(result.channels.first { $0.name == "Somoy TV" }?.iconURL?.host, "example.com")
+        XCTAssertEqual(
+            result.channels.first { $0.name == "Bunny Junior" }?.directSource?.absoluteString,
+            "file:///tmp/mobile-playlists/news/streams/bunny.m3u8"
+        )
+        XCTAssertTrue(result.channels.allSatisfy { $0.id < 0 })
+    }
+
+    func testMobileM3UExporterIncludesDirectAndAccountStreamURLs() {
+        let channels = [
+            MobileIPTVChannel(
+                id: -1,
+                name: "Direct HLS",
+                categoryID: "m3u:direct",
+                directSource: URL(string: "https://example.com/direct.m3u8")
+            ),
+            MobileIPTVChannel(
+                id: 42,
+                name: "Account Channel",
+                categoryID: "news",
+                directSource: nil
+            )
+        ]
+        let credentials = MobileIPTVCredentials(
+            serverURL: "http://example.com:8880",
+            username: "user",
+            password: "pass",
+            streamFormat: .transportStream
+        )
+
+        let playlist = MobileM3UPlaylistExporter.makePlaylist(channels: channels, credentials: credentials)
+
+        XCTAssertTrue(playlist.hasPrefix("#EXTM3U\n"))
+        XCTAssertTrue(playlist.contains("group-title=\"m3u:direct\",Direct HLS"))
+        XCTAssertTrue(playlist.contains("https://example.com/direct.m3u8"))
+        XCTAssertTrue(playlist.contains("group-title=\"news\",Account Channel"))
+        XCTAssertTrue(playlist.contains("http://example.com:8880/live/user/pass/42.ts"))
+    }
+
+    @MainActor
+    func testMobileStoreImportsLocalPlaylistAsDirectChannels() throws {
+        let store = MobileIPTVStore(credentialStore: MobileCredentialStore(defaults: isolatedDefaults()))
+        let playlistURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("channeldeck-mobile-\(UUID().uuidString)")
+            .appendingPathExtension("m3u")
+        try """
+        #EXTM3U
+        #EXTINF:-1 group-title="Imported News",Alpha News
+        https://example.com/alpha.m3u8
+        #EXTINF:-1 group-title="Imported News",Beta News
+        https://example.com/beta.m3u8
+        """.write(to: playlistURL, atomically: true, encoding: .utf8)
+        defer {
+            try? FileManager.default.removeItem(at: playlistURL)
+        }
+
+        let count = try store.importPlaylist(from: playlistURL)
+
+        XCTAssertEqual(count, 2)
+        XCTAssertEqual(store.playlistSourceName, playlistURL.lastPathComponent)
+        XCTAssertEqual(store.categories.map(\.name), ["All", "Imported News"])
+        XCTAssertEqual(store.selectedCategoryID, "m3u:imported-news")
+        XCTAssertEqual(store.channels.map(\.name), ["Alpha News", "Beta News"])
+        XCTAssertTrue(store.channels.allSatisfy { $0.directSource != nil })
+    }
+
     @MainActor
     func testMobileMultiviewAddsChannelsToEmptySlots() {
         let store = MobileIPTVStore(credentialStore: MobileCredentialStore(defaults: isolatedDefaults()))

@@ -51,6 +51,7 @@ Website: https://thromel.github.io/channeldeck/
 - Early iOS/iPadOS app target with Browse, Player, Multiview, Settings, Xtream login, Keychain password storage, and sample playback.
 - iOS/iPadOS 2-4 channel multiview playback with independent volume and mute per tile.
 - Adaptive iPadOS sidebar layout with channel/player/multiview/settings navigation and live status badges.
+- iOS/iPadOS local M3U playlist import and export through the Files picker.
 - Generic public builds with no provider server, username, password, or private provider playlist bundled.
 
 ## Run
@@ -87,7 +88,7 @@ For command-line device builds, use the same project and scheme after Xcode can 
 xcodebuild -project ChannelDeckIOS.xcodeproj -scheme ChannelDeckIOS -destination 'platform=iOS,name=Your iPhone Name' build
 ```
 
-The mobile target currently supports live channel browsing, single-channel AVKit playback, 2-4 channel multiview, account loading, sample playback, Keychain password storage, and an adaptive iPadOS sidebar. Recording, local playlist import/export, and the full macOS dashboard are still macOS-only.
+The mobile target currently supports live channel browsing, single-channel AVKit playback, 2-4 channel multiview, account loading, sample playback, local M3U import/export, Keychain password storage, and an adaptive iPadOS sidebar. Recording and the full macOS dashboard are still macOS-only.
 
 ## Release Build
 
@@ -111,7 +112,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 
 ## Planned Features
 
-- iOS and iPadOS feature parity for recording controls, local playlist import/export, and richer dashboard browsing.
+- iOS and iPadOS feature parity for recording controls and richer dashboard browsing.
 - Shared core package for common Xtream models, playlist parsing, and playback helpers across macOS, iOS, and iPadOS.
 - Longer walkthrough recordings for setup, recording, and multiview playback.
 - Developer ID signing and notarization for smoother macOS installs.
