@@ -64,6 +64,7 @@ struct ContentView: View {
                 .disabled(iptvStore.state == .loading)
 
                 Button {
+                    pictureInPictureService.stop()
                     iptvStore.stop()
                     WindowModeController.exitFullScreen()
                 } label: {
@@ -120,7 +121,7 @@ struct ContentView: View {
                 Button {
                     pictureInPictureService.toggle()
                 } label: {
-                    Label(pictureInPictureService.label, systemImage: pictureInPictureService.isActive ? "pip.exit" : "pip.enter")
+                    Label(pictureInPictureService.label, systemImage: pictureInPictureService.systemImage)
                 }
                 .help(pictureInPictureService.label)
                 .disabled(iptvStore.currentChannel == nil || !pictureInPictureService.canToggle)
@@ -132,6 +133,13 @@ struct ContentView: View {
                 }
                 .help("Save a local M3U playlist")
                 .disabled(iptvStore.channels.isEmpty)
+
+                Button {
+                    iptvStore.importM3UPlaylist()
+                } label: {
+                    Label("Import M3U", systemImage: "square.and.arrow.down.on.square")
+                }
+                .help("Import a local M3U playlist")
 
                 Button {
                     iptvStore.showLocalLibrary()

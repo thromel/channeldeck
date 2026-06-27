@@ -19,6 +19,11 @@ let package = Package(
                 .linkedFramework("AVKit"),
                 .linkedFramework("Security")
             ]
+        ),
+        .testTarget(
+            name: "ChannelDeckTests",
+            dependencies: ["ChannelDeck"],
+            path: "Tests/ChannelDeckTests"
         )
     ]
 )

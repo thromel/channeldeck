@@ -69,7 +69,7 @@ struct TheaterPlayerView: View {
                 Button {
                     pictureInPictureService.toggle()
                 } label: {
-                    Label("PiP", systemImage: pictureInPictureService.isActive ? "pip.exit" : "pip.enter")
+                    Label("PiP", systemImage: pictureInPictureService.systemImage)
                 }
                 .buttonStyle(.bordered)
                 .controlSize(.large)

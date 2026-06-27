@@ -37,6 +37,7 @@ Website: https://thromel.github.io/channeldeck/
 - Collapsible channel browser.
 - Optional account inspector panel.
 - HLS `.m3u8` and MPEG-TS `.ts` stream URL modes.
+- Local M3U playlist import for authorized direct-stream playlists.
 - Local M3U playlist export, defaulting to the ChannelDeck local library.
 - Copy stream URL fallback.
 - Open stream URL fallback for external players or browser handoff.
@@ -84,7 +85,6 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 - Full EPG grid and richer schedule browsing.
 - More library management controls for saved channels, recording metadata, and history.
 - VOD and series support for compatible provider APIs.
-- M3U playlist import where legally supported.
 
 ## Keyboard Shortcuts
 
@@ -95,6 +95,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 | `Command-[` | Previous channel |
 | `Command-]` | Next channel |
 | `Command-K` | Quick open channel switcher |
+| `Command-O` | Import local M3U playlist |
 | `Command-D` | Add or remove the current channel from favorites |
 | `Command-Shift-D` | Pin or unpin the current channel |
 | `Option-Command-M` | Show multiview |

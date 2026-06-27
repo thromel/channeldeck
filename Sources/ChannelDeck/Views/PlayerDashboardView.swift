@@ -148,6 +148,10 @@ private struct EmptyPlayerState: View {
     }
 
     private var dashboardSubtitle: String {
+        if let importedPlaylistName = iptvStore.importedPlaylistName {
+            return "\(iptvStore.channels.count) channels from \(importedPlaylistName)"
+        }
+
         if iptvStore.channels.isEmpty {
             return "Load your account to start watching live channels."
         }
@@ -395,7 +399,7 @@ private struct PlayerFooter: View {
                     Button {
                         pictureInPictureService.toggle()
                     } label: {
-                        Label(pictureInPictureService.label, systemImage: pictureInPictureService.isActive ? "pip.exit" : "pip.enter")
+                        Label(pictureInPictureService.label, systemImage: pictureInPictureService.systemImage)
                     }
                     .help(pictureInPictureService.label)
                     .disabled(!pictureInPictureService.canToggle)
@@ -421,6 +425,7 @@ private struct PlayerFooter: View {
                 }
 
                 Button {
+                    pictureInPictureService.stop()
                     iptvStore.stop()
                     WindowModeController.exitFullScreen()
                 } label: {
@@ -450,12 +455,12 @@ private struct PictureInPictureStatusStrip: View {
     @EnvironmentObject private var pictureInPictureService: PictureInPictureService
 
     var body: some View {
-        if pictureInPictureService.isActive || pictureInPictureService.issue != nil {
+        if pictureInPictureService.isPendingOrActive || pictureInPictureService.issue != nil {
             HStack(spacing: 8) {
-                Image(systemName: pictureInPictureService.isActive ? "pip.fill" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(pictureInPictureService.isActive ? .green : .orange)
+                Image(systemName: statusIcon)
+                    .foregroundStyle(statusColor)
 
-                Text(pictureInPictureService.isActive ? "Picture in Picture is active" : "Picture in Picture unavailable")
+                Text(statusText)
                     .font(.caption.weight(.semibold))
 
                 if let issue = pictureInPictureService.issue {
@@ -466,11 +471,58 @@ private struct PictureInPictureStatusStrip: View {
                 }
 
                 Spacer(minLength: 0)
+
+                if pictureInPictureService.isPendingOrActive {
+                    Button {
+                        pictureInPictureService.stop()
+                    } label: {
+                        Label("Stop Picture in Picture", systemImage: "pip.exit")
+                    }
+                    .labelStyle(.iconOnly)
+                    .buttonStyle(.borderless)
+                    .help("Stop Picture in Picture")
+                }
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
-            .background((pictureInPictureService.isActive ? Color.green : Color.orange).opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
+            .background(statusColor.opacity(0.12), in: RoundedRectangle(cornerRadius: 7))
         }
+    }
+
+    private var statusIcon: String {
+        if pictureInPictureService.issue != nil && !pictureInPictureService.isPendingOrActive {
+            return "exclamationmark.triangle.fill"
+        }
+
+        if pictureInPictureService.isStopping {
+            return "pip.exit"
+        }
+
+        return "pip.fill"
+    }
+
+    private var statusText: String {
+        if pictureInPictureService.issue != nil && !pictureInPictureService.isPendingOrActive {
+            return "Picture in Picture unavailable"
+        }
+
+        if pictureInPictureService.isStopping {
+            return "Stopping Picture in Picture"
+        }
+
+        if pictureInPictureService.isStarting {
+            return "Starting Picture in Picture"
+        }
+
+        return "Picture in Picture is active"
+    }
+
+    private var statusColor: Color {
+        if pictureInPictureService.issue != nil && !pictureInPictureService.isPendingOrActive {
+            return .orange
+        }
+
+        return .green
     }
 }
 

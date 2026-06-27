@@ -16,6 +16,7 @@ final class IPTVStore: ObservableObject {
     @Published private(set) var primaryRecording: LocalStreamRecording?
     @Published private(set) var localMediaItems: [LocalMediaItem] = []
     @Published private(set) var localMediaIssue: String?
+    @Published private(set) var importedPlaylistName: String?
     @Published private(set) var state: IPTVLoadState = .idle
     @Published private(set) var multiPlaybackSlots: [MultiPlaybackSlot]
     @Published private(set) var hasSavedMultiPlaybackLayout: Bool
@@ -166,6 +167,7 @@ final class IPTVStore: ObservableObject {
             restorePinnedChannels()
             restoreRecentChannels()
             lastLoadedAccount = account
+            importedPlaylistName = nil
             state = .loaded(Date())
 
             if !visibleCategories.contains(where: { $0.id == selectedCategoryID }) {
@@ -198,7 +200,14 @@ final class IPTVStore: ObservableObject {
         observe(item: item)
         player.replaceCurrentItem(with: item)
         player.play()
-        loadEPG(for: channel, account: account)
+        if channel.directSource == nil, account.isComplete {
+            loadEPG(for: channel, account: account)
+        } else {
+            epgTask?.cancel()
+            epgTask = nil
+            epgPrograms = []
+            epgState = .unavailable
+        }
     }
 
     func stop() {
@@ -469,7 +478,11 @@ final class IPTVStore: ObservableObject {
     }
 
     func refreshCurrentEPG(account: IPTVCredentials) {
-        guard let currentChannel else {
+        guard let currentChannel,
+              currentChannel.directSource == nil,
+              account.isComplete else {
+            epgPrograms = []
+            epgState = .unavailable
             return
         }
 
@@ -491,6 +504,30 @@ final class IPTVStore: ObservableObject {
         if M3UPlaylistExporter.save(channels: channels, account: account) != nil {
             refreshLocalMediaLibrary()
         }
+    }
+
+    func importM3UPlaylist() {
+        guard let result = M3UPlaylistImporter.open() else {
+            return
+        }
+
+        guard !result.channels.isEmpty else {
+            state = .failed("The selected M3U playlist did not contain playable channels.")
+            return
+        }
+
+        stop()
+        categories = result.categories
+        channels = result.channels
+        accountSummary = nil
+        importedPlaylistName = result.sourceURL.lastPathComponent
+        lastLoadedAccount = nil
+        selectedCategoryID = IPTVCategory.allID
+        selectedChannelID = nil
+        searchText = ""
+        restorePinnedChannels()
+        restoreRecentChannels()
+        state = .loaded(Date())
     }
 
     func showLocalLibrary() {

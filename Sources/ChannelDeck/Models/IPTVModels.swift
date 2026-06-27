@@ -85,6 +85,24 @@ struct IPTVChannel: Identifiable, Hashable, Decodable {
     let directSource: URL?
     let added: Date?
 
+    init(
+        id: Int,
+        name: String,
+        streamType: String = "live",
+        categoryID: String,
+        iconURL: URL? = nil,
+        directSource: URL?,
+        added: Date? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.streamType = streamType
+        self.categoryID = categoryID
+        self.iconURL = iconURL
+        self.directSource = directSource
+        self.added = added
+    }
+
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = container.decodeLossyInt(forKey: .streamID)
@@ -171,7 +189,7 @@ struct PlaybackDiagnostics: Equatable {
             detail: "Creating the player item and opening the live stream.",
             channelName: channel.name,
             streamID: channel.id,
-            format: account.streamFormat.label,
+            format: channel.directSource == nil ? account.streamFormat.label : "Direct URL",
             endpoint: safeEndpoint(from: url),
             issue: nil,
             updatedAt: Date()

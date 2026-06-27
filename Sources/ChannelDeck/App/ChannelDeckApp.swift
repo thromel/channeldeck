@@ -236,6 +236,7 @@ struct ChannelDeckApp: App {
                 .disabled(iptvStore.channels.isEmpty)
 
                 Button("Stop") {
+                    pictureInPictureService.stop()
                     iptvStore.stop()
                     WindowModeController.exitFullScreen()
                 }
@@ -338,6 +339,11 @@ struct ChannelDeckApp: App {
                 }
                 .keyboardShortcut("s", modifiers: [.command, .option])
                 .disabled(iptvStore.channels.isEmpty)
+
+                Button("Import M3U Playlist") {
+                    iptvStore.importM3UPlaylist()
+                }
+                .keyboardShortcut("o", modifiers: [.command])
 
                 Button("Show Local Library") {
                     iptvStore.showLocalLibrary()
