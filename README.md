@@ -19,6 +19,7 @@ Website: https://thromel.github.io/channeldeck/
 - Xtream-style account login with server URL, ID, and password.
 - Account validation through `player_api.php`.
 - Live category loading and live channel loading.
+- Home dashboard with pinned, favorite, and recent channel shelves.
 - Channel search and category filtering.
 - Command-K quick switcher for fast channel lookup, playback, multiview, pinning, and favorites.
 - Persistent pinned channels with a dedicated Pinned category.

@@ -39,38 +39,132 @@ private struct VideoStage: View {
 }
 
 private struct EmptyPlayerState: View {
+    @EnvironmentObject private var accountStore: AccountStore
     @EnvironmentObject private var iptvStore: IPTVStore
 
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "play.rectangle")
-                .font(.system(size: 58, weight: .regular))
-                .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 22) {
+                HStack(alignment: .center, spacing: 18) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 8)
+                            .fill(.thinMaterial)
+                        Image(systemName: "play.rectangle")
+                            .font(.system(size: 32, weight: .semibold))
+                            .foregroundStyle(.green)
+                    }
+                    .frame(width: 68, height: 54)
 
-            VStack(spacing: 4) {
-                Text("Choose a channel")
-                    .font(.title2.weight(.semibold))
+                    VStack(alignment: .leading, spacing: 5) {
+                        Text("ChannelDeck")
+                            .font(.largeTitle.weight(.semibold))
+                        Text(dashboardSubtitle)
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(2)
+                    }
 
-                Text("Live playback starts here, with channel controls below.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-            }
+                    Spacer(minLength: 20)
 
-            if !iptvStore.channels.isEmpty {
+                    if iptvStore.state == .loading {
+                        ProgressView()
+                            .controlSize(.small)
+                    }
+                }
+
                 HStack(spacing: 8) {
                     EmptyStatePill(label: "Pins", value: iptvStore.pinnedChannels.count, systemImage: "pin.fill")
                     EmptyStatePill(label: "Favorites", value: iptvStore.favoriteChannelIDs.count, systemImage: "star.fill")
                     EmptyStatePill(label: "Recent", value: iptvStore.recentChannels.count, systemImage: "clock.arrow.circlepath")
+                    EmptyStatePill(label: "Channels", value: iptvStore.channels.count, systemImage: "tv")
                 }
 
-                Button {
-                    iptvStore.showQuickSwitcher()
-                } label: {
-                    Label("Quick Open", systemImage: "magnifyingglass")
+                HStack(spacing: 10) {
+                    DashboardActionButton(title: "Quick Open", systemImage: "magnifyingglass") {
+                        iptvStore.showQuickSwitcher()
+                    }
+                    .disabled(iptvStore.channels.isEmpty)
+
+                    DashboardActionButton(title: "Multiview", systemImage: "rectangle.grid.2x2") {
+                        iptvStore.isTheaterMode = false
+                        iptvStore.isMultiPlaybackMode = true
+                    }
+                    .disabled(iptvStore.channels.isEmpty)
+
+                    DashboardActionButton(title: "Local Library", systemImage: "tray.full") {
+                        iptvStore.showLocalLibrary()
+                    }
+
+                    DashboardActionButton(title: "Reload", systemImage: "arrow.clockwise") {
+                        Task {
+                            await iptvStore.load(account: accountStore.credentials)
+                        }
+                    }
+                    .disabled(iptvStore.state == .loading || !accountStore.credentials.isComplete)
                 }
+
+                DashboardChannelSection(
+                    title: "Continue Watching",
+                    systemImage: "clock.arrow.circlepath",
+                    channels: Array(iptvStore.recentChannels.prefix(6)),
+                    emptyText: "Recent channels appear here.",
+                    play: play,
+                    multiview: addToMultiview,
+                    pin: iptvStore.togglePin,
+                    favorite: iptvStore.toggleFavorite,
+                    isPinned: iptvStore.isPinned,
+                    isFavorite: iptvStore.isFavorite
+                )
+
+                DashboardChannelSection(
+                    title: "Pinned",
+                    systemImage: "pin.fill",
+                    channels: Array(iptvStore.pinnedChannels.prefix(6)),
+                    emptyText: "Pinned channels appear here.",
+                    play: play,
+                    multiview: addToMultiview,
+                    pin: iptvStore.togglePin,
+                    favorite: iptvStore.toggleFavorite,
+                    isPinned: iptvStore.isPinned,
+                    isFavorite: iptvStore.isFavorite
+                )
+
+                DashboardChannelSection(
+                    title: "Favorites",
+                    systemImage: "star.fill",
+                    channels: Array(favoriteChannels.prefix(6)),
+                    emptyText: "Favorite channels appear here.",
+                    play: play,
+                    multiview: addToMultiview,
+                    pin: iptvStore.togglePin,
+                    favorite: iptvStore.toggleFavorite,
+                    isPinned: iptvStore.isPinned,
+                    isFavorite: iptvStore.isFavorite
+                )
             }
+            .frame(maxWidth: 920, alignment: .leading)
+            .padding(32)
         }
-        .padding(28)
+    }
+
+    private var dashboardSubtitle: String {
+        if iptvStore.channels.isEmpty {
+            return "Load your account to start watching live channels."
+        }
+
+        return "\(iptvStore.channels.count) live channels available"
+    }
+
+    private var favoriteChannels: [IPTVChannel] {
+        iptvStore.channels.filter { iptvStore.favoriteChannelIDs.contains($0.id) }
+    }
+
+    private func play(_ channel: IPTVChannel) {
+        iptvStore.play(channel, account: accountStore.credentials)
+    }
+
+    private func addToMultiview(_ channel: IPTVChannel) {
+        iptvStore.playInMultiPlayback(channel, account: accountStore.credentials)
     }
 }
 
@@ -91,6 +185,143 @@ private struct EmptyStatePill: View {
         .padding(.horizontal, 10)
         .padding(.vertical, 6)
         .background(.quaternary, in: Capsule())
+    }
+}
+
+private struct DashboardActionButton: View {
+    let title: String
+    let systemImage: String
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(title, systemImage: systemImage)
+                .frame(minWidth: 112)
+        }
+        .controlSize(.large)
+    }
+}
+
+private struct DashboardChannelSection: View {
+    let title: String
+    let systemImage: String
+    let channels: [IPTVChannel]
+    let emptyText: String
+    let play: (IPTVChannel) -> Void
+    let multiview: (IPTVChannel) -> Void
+    let pin: (IPTVChannel) -> Void
+    let favorite: (IPTVChannel) -> Void
+    let isPinned: (IPTVChannel) -> Bool
+    let isFavorite: (IPTVChannel) -> Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label(title, systemImage: systemImage)
+                .font(.headline)
+                .foregroundStyle(.primary)
+
+            if channels.isEmpty {
+                Text(emptyText)
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 16)
+                    .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 8))
+            } else {
+                LazyVGrid(columns: columns, spacing: 10) {
+                    ForEach(channels) { channel in
+                        DashboardChannelTile(
+                            channel: channel,
+                            play: { play(channel) },
+                            multiview: { multiview(channel) },
+                            pin: { pin(channel) },
+                            favorite: { favorite(channel) },
+                            isPinned: isPinned(channel),
+                            isFavorite: isFavorite(channel)
+                        )
+                    }
+                }
+            }
+        }
+    }
+
+    private var columns: [GridItem] {
+        [
+            GridItem(.adaptive(minimum: 260, maximum: 320), spacing: 10)
+        ]
+    }
+}
+
+private struct DashboardChannelTile: View {
+    let channel: IPTVChannel
+    let play: () -> Void
+    let multiview: () -> Void
+    let pin: () -> Void
+    let favorite: () -> Void
+    let isPinned: Bool
+    let isFavorite: Bool
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Button(action: play) {
+                HStack(spacing: 10) {
+                    ChannelArtwork(url: channel.iconURL)
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(channel.name)
+                            .font(.callout.weight(.semibold))
+                            .foregroundStyle(.primary)
+                            .lineLimit(1)
+
+                        Text("Stream \(channel.id)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
+
+                    Spacer(minLength: 6)
+
+                    Image(systemName: "play.fill")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.green)
+                }
+            }
+            .buttonStyle(.plain)
+
+            HStack(spacing: 6) {
+                Button(action: multiview) {
+                    Image(systemName: "rectangle.grid.2x2")
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.borderless)
+                .help("Add to multiview")
+
+                Button(action: pin) {
+                    Image(systemName: isPinned ? "pin.fill" : "pin")
+                        .foregroundStyle(isPinned ? .orange : .secondary)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.borderless)
+                .help(isPinned ? "Unpin" : "Pin")
+
+                Button(action: favorite) {
+                    Image(systemName: isFavorite ? "star.fill" : "star")
+                        .foregroundStyle(isFavorite ? .yellow : .secondary)
+                        .frame(width: 24, height: 24)
+                }
+                .buttonStyle(.borderless)
+                .help(isFavorite ? "Remove from favorites" : "Add to favorites")
+
+                Spacer()
+            }
+        }
+        .padding(12)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+        .overlay {
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.primary.opacity(0.08), lineWidth: 1)
+        }
     }
 }
 
