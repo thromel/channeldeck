@@ -4,8 +4,8 @@ set -euo pipefail
 APP_NAME="ChannelDeck"
 BUNDLE_ID="com.channeldeck.app"
 MIN_SYSTEM_VERSION="14.0"
-APP_VERSION="${APP_VERSION:-0.1.8}"
-APP_BUILD="${APP_BUILD:-9}"
+APP_VERSION="${APP_VERSION:-0.1.9}"
+APP_BUILD="${APP_BUILD:-10}"
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_CONFIG="release"

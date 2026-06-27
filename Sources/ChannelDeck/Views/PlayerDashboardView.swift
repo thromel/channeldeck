@@ -342,6 +342,15 @@ private struct GuideStrip: View {
             .buttonStyle(.borderless)
             .help("Refresh guide")
             .disabled(iptvStore.epgState == .loading)
+
+            Button {
+                iptvStore.showGuidePanel(account: accountStore.credentials)
+            } label: {
+                Label("Open Guide", systemImage: "rectangle.and.text.magnifyingglass")
+            }
+            .labelStyle(.iconOnly)
+            .buttonStyle(.borderless)
+            .help("Open full guide")
         }
     }
 }

@@ -45,6 +45,11 @@ struct ContentView: View {
                 .environmentObject(accountStore)
                 .environmentObject(iptvStore)
         }
+        .sheet(isPresented: $iptvStore.isGuidePanelVisible) {
+            GuidePanelView()
+                .environmentObject(accountStore)
+                .environmentObject(iptvStore)
+        }
         .toolbar {
             ToolbarItemGroup {
                 Button {
@@ -81,6 +86,14 @@ struct ContentView: View {
                 }
                 .help("Quickly find and play a channel")
                 .disabled(iptvStore.channels.isEmpty)
+
+                Button {
+                    iptvStore.showGuidePanel(account: accountStore.credentials)
+                } label: {
+                    Label("Guide", systemImage: "calendar")
+                }
+                .help("Show current channel guide")
+                .disabled(iptvStore.currentChannel == nil)
 
                 Button {
                     iptvStore.toggleChannelBrowser()

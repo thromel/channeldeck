@@ -25,6 +25,7 @@ final class IPTVStore: ObservableObject {
     @Published var isAccountInspectorVisible = false
     @Published var isLocalLibraryVisible = false
     @Published var isQuickSwitcherVisible = false
+    @Published var isGuidePanelVisible = false
     @Published var multiPlaybackSlotCount: Int {
         didSet {
             defaults.set(multiPlaybackSlotCount, forKey: Keys.multiPlaybackSlotCount)
@@ -475,6 +476,17 @@ final class IPTVStore: ObservableObject {
         loadEPG(for: currentChannel, account: account)
     }
 
+    func showGuidePanel(account: IPTVCredentials) {
+        isAccountInspectorVisible = false
+        isLocalLibraryVisible = false
+        isQuickSwitcherVisible = false
+        isGuidePanelVisible = true
+
+        if currentChannel != nil, epgPrograms.isEmpty, epgState != .loading {
+            refreshCurrentEPG(account: account)
+        }
+    }
+
     func saveM3UPlaylist(account: IPTVCredentials) {
         if M3UPlaylistExporter.save(channels: channels, account: account) != nil {
             refreshLocalMediaLibrary()
@@ -484,6 +496,7 @@ final class IPTVStore: ObservableObject {
     func showLocalLibrary() {
         isAccountInspectorVisible = false
         isQuickSwitcherVisible = false
+        isGuidePanelVisible = false
         refreshLocalMediaLibrary()
         isLocalLibraryVisible = true
     }
@@ -491,6 +504,7 @@ final class IPTVStore: ObservableObject {
     func showQuickSwitcher() {
         isAccountInspectorVisible = false
         isLocalLibraryVisible = false
+        isGuidePanelVisible = false
         isQuickSwitcherVisible = true
     }
 
@@ -626,7 +640,7 @@ final class IPTVStore: ObservableObject {
 
         epgTask = Task { @MainActor in
             do {
-                let programs = try await service.shortEPG(account: account, streamID: channel.id)
+                let programs = try await service.shortEPG(account: account, streamID: channel.id, limit: 8)
                 guard !Task.isCancelled,
                       currentChannel?.id == channel.id else {
                     return

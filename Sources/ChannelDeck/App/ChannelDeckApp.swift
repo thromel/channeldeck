@@ -289,6 +289,12 @@ struct ChannelDeckApp: App {
                 .keyboardShortcut("k", modifiers: [.command])
                 .disabled(iptvStore.channels.isEmpty)
 
+                Button("Show Current Guide") {
+                    iptvStore.showGuidePanel(account: accountStore.credentials)
+                }
+                .keyboardShortcut("g", modifiers: [.command, .option])
+                .disabled(iptvStore.currentChannel == nil)
+
                 Divider()
 
                 Button("Show Multiview") {

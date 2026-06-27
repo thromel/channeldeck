@@ -24,7 +24,7 @@ Website: https://thromel.github.io/channeldeck/
 - Persistent pinned channels with a dedicated Pinned category.
 - Recently played category that persists across launches.
 - Persistent favorites with a dedicated Favorites category.
-- Short EPG guide loading for the playing channel, with Now/Next display when provider data is available.
+- Short EPG guide loading for the playing channel, with Now/Next display and a richer guide panel when provider data is available.
 - Native AVKit playback.
 - Full-screen theater mode.
 - 2-4 channel multiview playback with independent volume and mute per tile.
@@ -97,6 +97,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 | `Command-D` | Add or remove the current channel from favorites |
 | `Command-Shift-D` | Pin or unpin the current channel |
 | `Option-Command-M` | Show multiview |
+| `Option-Command-G` | Show current channel guide |
 | `Command-Shift-R` | Start or stop recording the current stream |
 | `Option-Command-S` | Save local M3U playlist |
 | `Option-Command-J` | Show local recordings and saved playlists |
