@@ -24,6 +24,7 @@ final class IPTVStore: ObservableObject {
     @Published var isChannelBrowserVisible = true
     @Published var isAccountInspectorVisible = false
     @Published var isLocalLibraryVisible = false
+    @Published var isQuickSwitcherVisible = false
     @Published var multiPlaybackSlotCount: Int {
         didSet {
             defaults.set(multiPlaybackSlotCount, forKey: Keys.multiPlaybackSlotCount)
@@ -482,8 +483,15 @@ final class IPTVStore: ObservableObject {
 
     func showLocalLibrary() {
         isAccountInspectorVisible = false
+        isQuickSwitcherVisible = false
         refreshLocalMediaLibrary()
         isLocalLibraryVisible = true
+    }
+
+    func showQuickSwitcher() {
+        isAccountInspectorVisible = false
+        isLocalLibraryVisible = false
+        isQuickSwitcherVisible = true
     }
 
     func refreshLocalMediaLibrary() {

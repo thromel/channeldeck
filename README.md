@@ -20,6 +20,7 @@ Website: https://thromel.github.io/channeldeck/
 - Account validation through `player_api.php`.
 - Live category loading and live channel loading.
 - Channel search and category filtering.
+- Command-K quick switcher for fast channel lookup, playback, multiview, pinning, and favorites.
 - Persistent pinned channels with a dedicated Pinned category.
 - Recently played category that persists across launches.
 - Persistent favorites with a dedicated Favorites category.
@@ -92,6 +93,7 @@ For the current public zip, unzip `ChannelDeck-macOS.zip`, then right-click `Cha
 | `Space` | Play or pause the current stream |
 | `Command-[` | Previous channel |
 | `Command-]` | Next channel |
+| `Command-K` | Quick open channel switcher |
 | `Command-D` | Add or remove the current channel from favorites |
 | `Command-Shift-D` | Pin or unpin the current channel |
 | `Option-Command-M` | Show multiview |

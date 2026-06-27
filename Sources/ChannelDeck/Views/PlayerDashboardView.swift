@@ -62,6 +62,12 @@ private struct EmptyPlayerState: View {
                     EmptyStatePill(label: "Favorites", value: iptvStore.favoriteChannelIDs.count, systemImage: "star.fill")
                     EmptyStatePill(label: "Recent", value: iptvStore.recentChannels.count, systemImage: "clock.arrow.circlepath")
                 }
+
+                Button {
+                    iptvStore.showQuickSwitcher()
+                } label: {
+                    Label("Quick Open", systemImage: "magnifyingglass")
+                }
             }
         }
         .padding(28)

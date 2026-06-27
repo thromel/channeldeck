@@ -283,6 +283,14 @@ struct ChannelDeckApp: App {
             }
 
             CommandMenu("Channels") {
+                Button("Quick Open Channel") {
+                    iptvStore.showQuickSwitcher()
+                }
+                .keyboardShortcut("k", modifiers: [.command])
+                .disabled(iptvStore.channels.isEmpty)
+
+                Divider()
+
                 Button("Show Multiview") {
                     iptvStore.isTheaterMode = false
                     iptvStore.isMultiPlaybackMode = true

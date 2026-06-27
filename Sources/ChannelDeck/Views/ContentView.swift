@@ -40,6 +40,11 @@ struct ContentView: View {
             RecordingsLibraryView()
                 .environmentObject(iptvStore)
         }
+        .sheet(isPresented: $iptvStore.isQuickSwitcherVisible) {
+            QuickSwitcherView()
+                .environmentObject(accountStore)
+                .environmentObject(iptvStore)
+        }
         .toolbar {
             ToolbarItemGroup {
                 Button {
@@ -67,6 +72,14 @@ struct ContentView: View {
                     Label("Multiview", systemImage: "rectangle.grid.2x2")
                 }
                 .help("Show multiview player")
+                .disabled(iptvStore.channels.isEmpty)
+
+                Button {
+                    iptvStore.showQuickSwitcher()
+                } label: {
+                    Label("Quick Open", systemImage: "magnifyingglass")
+                }
+                .help("Quickly find and play a channel")
                 .disabled(iptvStore.channels.isEmpty)
 
                 Button {
